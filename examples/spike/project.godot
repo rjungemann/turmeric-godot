@@ -1,0 +1,13 @@
+; Engine configuration file for the turmeric-godot G0 spike project.
+;
+; A no-op project that exists only to load the turmeric-godot GDExtension and
+; let us confirm the language registers. Run headless to verify:
+;
+;   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --quit
+
+config_version=5
+
+[application]
+
+config/name="turmeric-godot spike"
+config/features=PackedStringArray("4.3", "Forward Plus")

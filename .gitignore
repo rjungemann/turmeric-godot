@@ -1,0 +1,20 @@
+# Build output
+bin/
+.sconsign.dblite
+*.os
+*.o
+*.obj
+*.pyc
+__pycache__/
+
+# Godot project caches (under examples/)
+.godot/
+.import/
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Compiled extension artifacts intentionally NOT ignored:
+# the .gdextension manifest is checked in at the repo root.
