@@ -2,6 +2,7 @@
 #include "turmeric_script.h"
 #include "turmeric_instance.h"
 #include "bridge/classdb_proxy.h"
+#include "bridge/variant_marshal.h"
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -120,22 +121,18 @@ static TuriValue tg_native_export(TuriEnv *env, TuriValue *args, uint32_t n, voi
     return turi_nil();
 }
 
-// Variant -> TuriValue for prop-get returns. Strings are not supported (the
-// cstr would have to outlive the call; punt for v1) and return nil with a
-// warning so the script can branch on the result.
+// Variant -> TuriValue for prop-get returns. Routes through the shared
+// primitive marshaller and additionally prints a hint for STRING values
+// (the primitive helper silently nils strings here because prop-get has no
+// owner buffer to keep the utf8 bytes alive).
 static TuriValue tg_variant_to_turi(const Variant &v) {
-    switch (v.get_type()) {
-        case Variant::NIL:   return turi_nil();
-        case Variant::BOOL:  return turi_bool((bool)v);
-        case Variant::INT:   return turi_int((int64_t)v);
-        case Variant::FLOAT: return turi_float((double)v);
-        case Variant::STRING:
-            UtilityFunctions::printerr(
-                "turmeric-godot: (godot-prop-get) string-typed properties cannot "
-                "be read from script in v1; returning nil");
-            return turi_nil();
-        default: return turi_nil();
+    if (v.get_type() == Variant::STRING) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-prop-get) string-typed properties cannot "
+            "be read from script in v1; returning nil");
+        return turi_nil();
     }
+    return variant_to_turi_primitive(v, nullptr);
 }
 
 // (godot-prop-get NAME) -- read a declared export on the current instance.
@@ -350,6 +347,11 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native("godot-vec3-x",   tg_native_godot_vec3_x, nullptr);
     turi_register_default_native("godot-vec3-y",   tg_native_godot_vec3_y, nullptr);
     turi_register_default_native("godot-vec3-z",   tg_native_godot_vec3_z, nullptr);
+    turi_register_default_native("godot-color",    tg_native_godot_color,   nullptr);
+    turi_register_default_native("godot-color-r",  tg_native_godot_color_r, nullptr);
+    turi_register_default_native("godot-color-g",  tg_native_godot_color_g, nullptr);
+    turi_register_default_native("godot-color-b",  tg_native_godot_color_b, nullptr);
+    turi_register_default_native("godot-color-a",  tg_native_godot_color_a, nullptr);
 }
 
 void TurmericLanguage::shutdown_turi() {

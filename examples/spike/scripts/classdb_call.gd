@@ -34,6 +34,11 @@ func _init() -> void:
 	if not (_approx_eq(node.position.x, 100.0) and _approx_eq(node.position.y, 50.0)):
 		_fail("position: expected (100, 50), got %s" % str(node.position))
 
+	# (godot-call self "set_modulate" (godot-color 0.5 0.25 0.75 1.0))
+	if not (_approx_eq(node.modulate.r, 0.5) and _approx_eq(node.modulate.g, 0.25)
+			and _approx_eq(node.modulate.b, 0.75) and _approx_eq(node.modulate.a, 1.0)):
+		_fail("modulate: expected (0.5, 0.25, 0.75, 1.0), got %s" % str(node.modulate))
+
 	# get_name round-trip: the script prints the name via (godot-println).
 	# We just confirm the node was reachable; the printed output is captured
 	# in the test log.

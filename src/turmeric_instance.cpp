@@ -27,53 +27,16 @@ namespace godot {
 
 thread_local TurmericInstance *g_current_instance = nullptr;
 
-// --- Variant ↔ TuriValue marshalling ----------------------------------------
-// G1 scope: primitives only (int, float, bool, String + nil). Everything else
-// is best-effort (gets coerced to nil or stringified) and will be fleshed out
-// in G2 alongside the per-script env work.
-
-static TuriValue variant_to_turi(const Variant &v, CharString *str_owner_out) {
-    switch (v.get_type()) {
-        case Variant::NIL:
-            return turi_nil();
-        case Variant::BOOL:
-            return turi_bool((bool)v);
-        case Variant::INT:
-            return turi_int((int64_t)v);
-        case Variant::FLOAT:
-            return turi_float((double)v);
-        case Variant::STRING: {
-            String s = v;
-            CharString cs = s.utf8();
-            if (str_owner_out) {
-                *str_owner_out = cs;
-                return turi_cstr(str_owner_out->get_data());
-            }
-            // No owner provided: return nil rather than a dangling cstr.
-            return turi_nil();
-        }
-        default:
-            return turi_nil();
-    }
+// Primitive Variant <-> TuriValue marshalling lives in bridge/variant_marshal.
+// Local aliases keep the existing call sites short.
+namespace {
+inline TuriValue variant_to_turi(const Variant &v, CharString *owner) {
+    return variant_to_turi_primitive(v, owner);
 }
-
-static Variant turi_to_variant(TuriValue v) {
-    switch (v.tag) {
-        case TURI_NIL:   return Variant();
-        case TURI_BOOL:  return Variant((bool)v.as_bool);
-        case TURI_INT:   return Variant((int64_t)v.as_int);
-        case TURI_FLOAT: return Variant((double)v.as_float);
-        case TURI_CSTR:  return Variant(String(v.as_cstr ? v.as_cstr : ""));
-        case TURI_ERROR: {
-            UtilityFunctions::printerr(
-                String("turmeric-godot: Turmeric returned error: ") +
-                String(v.as_error ? v.as_error : "<unknown>"));
-            return Variant();
-        }
-        default:
-            return Variant();
-    }
+inline Variant turi_to_variant(TuriValue v) {
+    return turi_to_variant_primitive(v);
 }
+} // namespace
 
 // --- Dispatch helpers --------------------------------------------------------
 

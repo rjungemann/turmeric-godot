@@ -37,6 +37,13 @@ TuriValue tg_native_godot_vec3_x(TuriEnv *env, TuriValue *args, uint32_t n, void
 TuriValue tg_native_godot_vec3_y(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_vec3_z(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// (godot-color r g b a) -> :int arena handle wrapping Color(r, g, b, a).
+TuriValue tg_native_godot_color(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_color_r(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_color_g(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_color_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_color_a(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 } // namespace godot
 
 #endif

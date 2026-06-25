@@ -8,6 +8,7 @@
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/variant.hpp>
+#include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -91,6 +92,7 @@ static TuriValue tg_result_to_turi(const Variant &v) {
         }
         case Variant::VECTOR2:
         case Variant::VECTOR3:
+        case Variant::COLOR:
             return turi_int(variant_arena_push(v));
         case Variant::OBJECT: {
             Object *o = (Object *)v;
@@ -222,6 +224,52 @@ TuriValue tg_native_godot_vec3_z(TuriEnv *env, TuriValue *args, uint32_t n, void
     const Variant *vp = tg_handle_arg(args[0], "(godot-vec3-z)");
     if (!vp || vp->get_type() != Variant::VECTOR3) return turi_nil();
     return turi_float((double)((Vector3)*vp).z);
+}
+
+// --- Color ------------------------------------------------------------------
+
+TuriValue tg_native_godot_color(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    double r = 0.0, g = 0.0, b = 0.0, a = 1.0;
+    if (n != 4 || !tg_arg_as_double(args[0], &r) || !tg_arg_as_double(args[1], &g) ||
+        !tg_arg_as_double(args[2], &b) || !tg_arg_as_double(args[3], &a)) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-color r g b a) needs four numbers");
+        return turi_nil();
+    }
+    return turi_int(variant_arena_push(Variant(Color((float)r, (float)g, (float)b, (float)a))));
+}
+
+static TuriValue tg_color_component(TuriValue h, const char *who, int idx) {
+    const Variant *vp = tg_handle_arg(h, who);
+    if (!vp || vp->get_type() != Variant::COLOR) return turi_nil();
+    Color c = (Color)*vp;
+    switch (idx) {
+        case 0: return turi_float((double)c.r);
+        case 1: return turi_float((double)c.g);
+        case 2: return turi_float((double)c.b);
+        default: return turi_float((double)c.a);
+    }
+}
+
+TuriValue tg_native_godot_color_r(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) { UtilityFunctions::printerr("turmeric-godot: (godot-color-r c) takes 1 arg"); return turi_nil(); }
+    return tg_color_component(args[0], "(godot-color-r)", 0);
+}
+TuriValue tg_native_godot_color_g(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) { UtilityFunctions::printerr("turmeric-godot: (godot-color-g c) takes 1 arg"); return turi_nil(); }
+    return tg_color_component(args[0], "(godot-color-g)", 1);
+}
+TuriValue tg_native_godot_color_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) { UtilityFunctions::printerr("turmeric-godot: (godot-color-b c) takes 1 arg"); return turi_nil(); }
+    return tg_color_component(args[0], "(godot-color-b)", 2);
+}
+TuriValue tg_native_godot_color_a(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) { UtilityFunctions::printerr("turmeric-godot: (godot-color-a c) takes 1 arg"); return turi_nil(); }
+    return tg_color_component(args[0], "(godot-color-a)", 3);
 }
 
 } // namespace godot

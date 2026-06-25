@@ -21,6 +21,15 @@
       (godot-vec2-x pos)
       (godot-vec2-y pos))
 
+    ;; Color round-trip: Node2D inherits CanvasItem.modulate (Color property).
+    (godot-call self "set_modulate" (godot-color 0.5 0.25 0.75 1.0))
+    (let [mod (godot-call self "get_modulate")]
+      (godot-println "[classdb_call] modulate round-trip; r/g/b/a follows:")
+      (godot-color-r mod)
+      (godot-color-g mod)
+      (godot-color-b mod)
+      (godot-color-a mod))
+
     (let [name (godot-call self "get_name")]
       (godot-println "[classdb_call] my get_name returned:")
       (godot-println name))
