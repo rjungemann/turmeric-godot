@@ -33,7 +33,7 @@ env.Append(LIBS=[File(libturi_a)])
 if env["platform"] == "macos":
     env.Append(LINKFLAGS=["-Wl,-no_warn_duplicate_libraries"])
 
-sources = Glob("src/*.cpp")
+sources = Glob("src/*.cpp") + Glob("src/bridge/*.cpp")
 
 if env["platform"] == "macos":
     library = env.SharedLibrary(

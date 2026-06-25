@@ -21,6 +21,8 @@ extern "C" {
 #include "turi/value.h"
 }
 
+#include "bridge/variant_marshal.h"
+
 namespace godot {
 
 thread_local TurmericInstance *g_current_instance = nullptr;
@@ -171,7 +173,13 @@ static void cb_call(GDExtensionScriptInstanceDataPtr p_self,
     // (script method calling another script method) don't lose the outer.
     TurmericInstance *prev_inst = g_current_instance;
     g_current_instance = self;
+    // G3.a — bracket a Variant arena frame around this script-method call so
+    // (godot-vec2 ...)/(godot-vec3 ...) handles created during the call are
+    // reclaimed on return. Nested calls (script method calling another script
+    // method via callv) save/restore via the frame token.
+    VariantArenaFrame arena_frame = variant_arena_enter();
     TuriValue ret = turi_call(env, fn, args, n);
+    variant_arena_leave(arena_frame);
     g_current_instance = prev_inst;
 
     if (r_return) {

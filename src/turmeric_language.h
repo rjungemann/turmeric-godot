@@ -20,7 +20,7 @@ class TurmericLanguage : public ScriptLanguageExtension {
     GDCLASS(TurmericLanguage, ScriptLanguageExtension)
 
 protected:
-    static void _bind_methods() {}
+    static void _bind_methods();
 
 public:
     TurmericLanguage();
@@ -75,6 +75,13 @@ public:
 
     // --- Frame hooks (called every frame in the editor) ---
     void _frame() override;
+
+    // --- Test affordance ---
+    // _validate is virtual-only on ScriptLanguageExtension and is not bound
+    // as a publicly invocable method, so GDScript drivers can't call it
+    // directly. This thin wrapper exposes the same code path under a bound
+    // name so headless test drivers can exercise the diagnostic shape.
+    Dictionary validate_source(const String &p_script, const String &p_path);
 };
 
 } // namespace godot

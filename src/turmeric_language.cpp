@@ -1,6 +1,9 @@
 #include "turmeric_language.h"
 #include "turmeric_script.h"
 #include "turmeric_instance.h"
+#include "bridge/classdb_proxy.h"
+
+#include <godot_cpp/core/class_db.hpp>
 
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/core/memory.hpp>
@@ -30,6 +33,17 @@ extern thread_local TurmericScript   *g_reloading_script;
 
 static TurmericLanguage *s_singleton = nullptr;
 TurmericLanguage *TurmericLanguage::singleton() { return s_singleton; }
+
+void TurmericLanguage::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("validate_source", "script", "path"),
+                         &TurmericLanguage::validate_source);
+}
+
+Dictionary TurmericLanguage::validate_source(const String &p_script, const String &p_path) {
+    return _validate(p_script, p_path,
+                     /*functions*/ true, /*errors*/ true,
+                     /*warnings*/ true,  /*safe_lines*/ false);
+}
 
 // --- Native: (godot/println msg) ---------------------------------------------
 // Routes a Turmeric cstr argument through Godot's print pipeline so it shows
@@ -326,6 +340,16 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native("godot-prop-set", tg_native_prop_set, nullptr);
     turi_register_default_native("godot-signal",   tg_native_signal,   nullptr);
     turi_register_default_native("emit-signal",    tg_native_emit_signal, nullptr);
+    // G3.a — generic ClassDB proxy + Variant arena (Vector2/Vector3 today).
+    turi_register_default_native("godot-self",     tg_native_godot_self, nullptr);
+    turi_register_default_native("godot-call",     tg_native_godot_call, nullptr);
+    turi_register_default_native("godot-vec2",     tg_native_godot_vec2, nullptr);
+    turi_register_default_native("godot-vec3",     tg_native_godot_vec3, nullptr);
+    turi_register_default_native("godot-vec2-x",   tg_native_godot_vec2_x, nullptr);
+    turi_register_default_native("godot-vec2-y",   tg_native_godot_vec2_y, nullptr);
+    turi_register_default_native("godot-vec3-x",   tg_native_godot_vec3_x, nullptr);
+    turi_register_default_native("godot-vec3-y",   tg_native_godot_vec3_y, nullptr);
+    turi_register_default_native("godot-vec3-z",   tg_native_godot_vec3_z, nullptr);
 }
 
 void TurmericLanguage::shutdown_turi() {
@@ -369,15 +393,136 @@ bool TurmericLanguage::_can_inherit_from_file() const { return false; }
 
 // --- Validation / creation ---
 
+// G3.d -- structured _validate. The editor calls this on every save (and on
+// some keystroke debounce) with the *current buffer* contents; we run the
+// source through a throwaway libturi env so parse + elaboration diagnostics
+// show up inline. The env is discarded after validation, so any side
+// effects from top-level forms in the script are bounded to validation
+// time (acceptable for v1; matches how GDScript's _validate also runs the
+// class-body elaboration).
+//
+// Returned shape (matches Godot's expectation; mirrors GDScript):
+//   {
+//     "valid":      bool,
+//     "errors":     [{ "path", "line", "column", "message" }, ...],
+//     "warnings":   [{ "path", "line", "column", "message" }, ...],
+//     "functions":  []  // not populated v1
+//     "safe_lines": PackedInt32Array()  // not populated v1
+//   }
+namespace {
+struct ValidateDiag {
+    int level;          // 0=error, 1=warning, 2=note, 3=help
+    String code;
+    String message;
+    String file;
+    int    line;
+    int    col_start;
+    int    col_end;
+};
+thread_local std::vector<ValidateDiag> *g_validate_sink = nullptr;
+} // namespace
+
+static void validate_collect_sink(TuriEnv * /*env*/, int level, const char *code,
+                                  const char *file, uint32_t line,
+                                  uint32_t col_start, uint32_t col_end,
+                                  const char *message, void * /*ud*/) {
+    if (!g_validate_sink) return;
+    ValidateDiag d;
+    d.level     = level;
+    d.code      = String(code ? code : "");
+    d.message   = String(message ? message : "");
+    d.file      = String(file ? file : "");
+    d.line      = (int)line;
+    d.col_start = (int)col_start;
+    d.col_end   = (int)col_end;
+    g_validate_sink->push_back(std::move(d));
+}
+
+static Dictionary diag_to_dict(const ValidateDiag &d, const String &script_path) {
+    Dictionary out;
+    out["path"]    = d.file.is_empty() ? script_path : d.file;
+    out["line"]    = d.line;
+    out["column"]  = d.col_start;
+    String msg = d.message;
+    if (!d.code.is_empty()) msg = d.code + String(": ") + msg;
+    out["message"] = msg;
+    return out;
+}
+
 Dictionary TurmericLanguage::_validate(const String &p_script,
                                        const String &p_path,
                                        bool p_validate_functions,
                                        bool p_validate_errors,
                                        bool p_validate_warnings,
                                        bool p_validate_safe_lines) const {
-    TG_LOG("_validate");
+    (void)p_validate_functions; (void)p_validate_safe_lines;
     Dictionary result;
-    result["valid"] = true; // spike: pretend everything compiles
+    Array errors;
+    Array warnings;
+
+    std::vector<ValidateDiag> diags;
+    std::vector<ValidateDiag> *prev_sink = g_validate_sink;
+    g_validate_sink = &diags;
+
+    TuriEnv *env = turi_env_new();
+    if (!env) {
+        g_validate_sink = prev_sink;
+        result["valid"]     = false;
+        Dictionary e;
+        e["path"] = p_path; e["line"] = 0; e["column"] = 0;
+        e["message"] = String("turmeric-godot: failed to allocate validation env");
+        errors.push_back(e);
+        result["errors"]    = errors;
+        result["warnings"]  = warnings;
+        result["functions"] = Array();
+        result["safe_lines"] = PackedInt32Array();
+        return result;
+    }
+    turi_env_set_diag_sink(env, validate_collect_sink, nullptr);
+
+    // Resolve (import ...) relative to the script's own directory if known --
+    // this matches the behavior _reload sets up so validate sees the same
+    // module graph.
+    if (!p_path.is_empty()) {
+        String dir = p_path.get_base_dir();
+        if (!dir.is_empty()) {
+            CharString dir_cs = dir.utf8();
+            turi_env_set_module_base_dir(env, dir_cs.get_data());
+        }
+    }
+
+    CharString src_utf8 = p_script.utf8();
+    TuriValue v = turi_eval(env, src_utf8.get_data());
+    // We don't care about the value; we care about what the diag sink collected.
+    // A TURI_ERROR with no sinked diag is a fallback "something went wrong".
+    if (v.tag == TURI_ERROR && diags.empty()) {
+        ValidateDiag fallback;
+        fallback.level     = 0;
+        fallback.message   = String(v.as_error ? v.as_error : "<unknown error>");
+        fallback.line      = 0;
+        fallback.col_start = 0;
+        diags.push_back(std::move(fallback));
+    }
+
+    turi_env_free(env);
+    g_validate_sink = prev_sink;
+
+    bool any_errors = false;
+    for (const auto &d : diags) {
+        if (d.level <= 0) {
+            if (p_validate_errors) errors.push_back(diag_to_dict(d, p_path));
+            any_errors = true;
+        } else if (d.level == 1) {
+            if (p_validate_warnings) warnings.push_back(diag_to_dict(d, p_path));
+        }
+        // notes / help: dropped for v1
+    }
+
+    result["valid"]      = !any_errors;
+    result["errors"]     = errors;
+    result["warnings"]   = warnings;
+    result["functions"]  = Array();
+    result["safe_lines"] = PackedInt32Array();
     return result;
 }
 
