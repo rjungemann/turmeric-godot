@@ -3,6 +3,8 @@
 #include "turmeric_instance.h"
 #include "bridge/classdb_proxy.h"
 #include "bridge/variant_marshal.h"
+#include "bridge/prelude.h"
+#include "bridge/generated_facade.h"
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -18,7 +20,9 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cctype>
 #include <string>
+#include <unordered_set>
 
 extern "C" {
 #include "turi/eval.h"
@@ -38,12 +42,178 @@ TurmericLanguage *TurmericLanguage::singleton() { return s_singleton; }
 void TurmericLanguage::_bind_methods() {
     ClassDB::bind_method(D_METHOD("validate_source", "script", "path"),
                          &TurmericLanguage::validate_source);
+    ClassDB::bind_method(D_METHOD("complete_code_for_test", "code", "path"),
+                         &TurmericLanguage::complete_code_for_test);
 }
 
 Dictionary TurmericLanguage::validate_source(const String &p_script, const String &p_path) {
     return _validate(p_script, p_path,
                      /*functions*/ true, /*errors*/ true,
                      /*warnings*/ true,  /*safe_lines*/ false);
+}
+
+// --- G4.2 Code completion ---
+//
+// MVP scope: top-level symbol names. Sources in priority order:
+//   1. Names defined by the user's source (extracted via top-level
+//      `(def | defn | defmacro | defstruct ...)` regex-style scan).
+//   2. The hand-written prelude (TG_PRELUDE_SOURCE).
+//   3. The generated extension_api.json facade
+//      (TG_GENERATED_FACADE_SOURCE).
+//
+// Filtering: by the last "word" the user is typing -- characters up to
+// the cursor that form a valid Turmeric symbol. The editor passes the
+// entire buffer; we scan backward from the end of p_code for the
+// in-progress symbol.
+//
+// We do NOT spin up a TuriEnv here because (a) it would re-eval the
+// user's source on every keystroke (slow), and (b) libturi has no
+// public env-iteration API yet. The source-scan approach gets the
+// vast majority of useful completions at near-zero cost. A future
+// pass can plug into libturi once an iteration entry point lands.
+
+namespace {
+
+// Same set of leading-symbol chars the highlighter recognizes. Keep in
+// sync with turmeric_syntax_highlighter.cpp.
+static bool is_sym_char(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') ||
+           c == '_' || c == '-' || c == '+' || c == '*' || c == '/' ||
+           c == '?' || c == '!' || c == '<' || c == '>' || c == '=' ||
+           c == '&' || c == '%' || c == ':' || c == '.';
+}
+
+// Extract names defined by top-level (defX NAME ...) forms in src.
+// `defs` is what we recognize: defn, def, defmacro, defstruct,
+// definstance, deftype.
+static void collect_top_level_defs(const char *src, std::vector<std::string> &out) {
+    if (!src) return;
+    const size_t n = std::strlen(src);
+    size_t i = 0;
+    while (i < n) {
+        // Skip whitespace + comments.
+        while (i < n && std::isspace((unsigned char)src[i])) i++;
+        if (i < n && src[i] == ';') {
+            while (i < n && src[i] != '\n') i++;
+            continue;
+        }
+        if (i >= n) break;
+        if (src[i] != '(') { i++; continue; }
+
+        // Inside a paren. Read the head word.
+        size_t j = i + 1;
+        while (j < n && std::isspace((unsigned char)src[j])) j++;
+        const size_t head_start = j;
+        while (j < n && is_sym_char(src[j])) j++;
+        const size_t head_end = j;
+
+        const std::string head(src + head_start, head_end - head_start);
+        if (head == "defn" || head == "def" || head == "defmacro" ||
+            head == "defstruct" || head == "definstance" || head == "deftype" ||
+            head == "defopaque" || head == "defclass") {
+            // Read the next word -- the name.
+            while (j < n && std::isspace((unsigned char)src[j])) j++;
+            const size_t name_start = j;
+            while (j < n && is_sym_char(src[j])) j++;
+            const size_t name_end = j;
+            if (name_end > name_start) {
+                out.emplace_back(src + name_start, name_end - name_start);
+            }
+        }
+
+        // Skip to matching paren so we don't pick up nested defs as
+        // top-level. Track depth + string literals.
+        int depth = 1;
+        size_t k = i + 1;
+        bool in_str = false;
+        while (k < n && depth > 0) {
+            const char c = src[k];
+            if (in_str) {
+                if (c == '\\' && k + 1 < n) { k += 2; continue; }
+                if (c == '"') in_str = false;
+            } else if (c == '"') {
+                in_str = true;
+            } else if (c == ';') {
+                while (k < n && src[k] != '\n') k++;
+                continue;
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+            }
+            k++;
+        }
+        i = k;
+    }
+}
+
+// Pull the in-progress symbol the user is typing -- characters
+// immediately before the end of `code` that form a sym. Returns "" if
+// the trailing char isn't a sym char (cursor sitting on whitespace /
+// paren / etc.).
+static std::string trailing_prefix(const String &code) {
+    CharString cs = code.utf8();
+    const char *s = cs.get_data();
+    const int n = (int)cs.length();
+    int end = n;
+    int start = end;
+    while (start > 0 && is_sym_char(s[start - 1])) start--;
+    return std::string(s + start, end - start);
+}
+
+} // namespace
+
+Dictionary TurmericLanguage::_complete_code(const String &p_code,
+                                            const String &p_path,
+                                            Object *p_owner) const {
+    (void)p_path; (void)p_owner;
+
+    // Collect candidates.
+    std::vector<std::string> names;
+    {
+        CharString cs = p_code.utf8();
+        collect_top_level_defs(cs.get_data(), names);
+    }
+    collect_top_level_defs(TG_PRELUDE_SOURCE, names);
+    collect_top_level_defs(TG_GENERATED_FACADE_SOURCE, names);
+
+    // Dedup while preserving first-seen order (user source wins).
+    std::vector<std::string> deduped;
+    deduped.reserve(names.size());
+    {
+        std::unordered_set<std::string> seen;
+        for (const auto &n : names) {
+            if (seen.insert(n).second) deduped.push_back(n);
+        }
+    }
+
+    // Filter by trailing prefix.
+    const std::string prefix = trailing_prefix(p_code);
+    Array options;
+    for (const auto &n : deduped) {
+        if (!prefix.empty() && n.rfind(prefix, 0) != 0) continue;  // not a prefix match
+        Dictionary opt;
+        opt["kind"]        = 0;                       // CodeEdit::KIND_FUNCTION
+        opt["display"]     = String(n.c_str());
+        opt["insert_text"] = String(n.c_str());
+        opt["font_color"]  = Color(0.85f, 0.85f, 0.85f);
+        opt["icon"]        = Variant();
+        opt["default_value"] = Variant();
+        opt["location"]    = 0;                       // LOCATION_OTHER
+        options.push_back(opt);
+    }
+
+    Dictionary result;
+    result["result"]    = 0;       // CODE_COMPLETION_RESULT_SUCCESS
+    result["force"]     = false;
+    result["call_hint"] = String();
+    result["options"]   = options;
+    return result;
+}
+
+Dictionary TurmericLanguage::complete_code_for_test(const String &p_code, const String &p_path) {
+    return _complete_code(p_code, p_path, nullptr);
 }
 
 // --- Native: (godot/println msg) ---------------------------------------------

@@ -15,6 +15,7 @@
 #include "turmeric_language.h"
 #include "turmeric_resource.h"
 #include "turmeric_script.h"
+#include "turmeric_syntax_highlighter.h"
 
 using namespace godot;
 
@@ -34,6 +35,7 @@ void initialize_turmeric_godot_module(ModuleInitializationLevel p_level) {
     GDREGISTER_CLASS(TurmericScript);
     GDREGISTER_CLASS(TurmericResourceLoader);
     GDREGISTER_CLASS(TurmericResourceSaver);
+    GDREGISTER_CLASS(TurmericSyntaxHighlighter);
 
     turmeric_language_singleton = memnew(TurmericLanguage);
     Engine::get_singleton()->register_script_language(turmeric_language_singleton);

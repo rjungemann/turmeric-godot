@@ -65,6 +65,11 @@ public:
                          bool p_validate_safe_lines) const override;
     Object *_create_script() const override;
 
+    // --- Code completion (G4.2) ---
+    Dictionary _complete_code(const String &p_code,
+                              const String &p_path,
+                              Object *p_owner) const override;
+
     // --- Reloading ---
     void _reload_all_scripts() override;
     void _reload_tool_script(const Ref<Script> &p_script, bool p_soft_reload) override;
@@ -82,6 +87,9 @@ public:
     // directly. This thin wrapper exposes the same code path under a bound
     // name so headless test drivers can exercise the diagnostic shape.
     Dictionary validate_source(const String &p_script, const String &p_path);
+
+    // Same rationale as validate_source -- _complete_code is virtual-only.
+    Dictionary complete_code_for_test(const String &p_code, const String &p_path);
 };
 
 } // namespace godot
