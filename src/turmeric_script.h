@@ -7,10 +7,22 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
+#include <godot_cpp/variant/variant.hpp>
+
+#include <vector>
 
 struct TuriEnv;
 
 namespace godot {
+
+// G2 :exports — one declaration registered by `(godot-export ...)` at the
+// top level of a script. The script-level default is the value the inspector
+// shows for a freshly-attached node before the user types anything.
+struct ExportDecl {
+    StringName    name;
+    Variant::Type type;
+    Variant       default_value;
+};
 
 // G1: a TurmericScript holds the source code of one `.tur` file and, on
 // reload, hands the source to libturi for evaluation. Per-node instance
@@ -55,10 +67,21 @@ public:
     // --- Access for TurmericInstance dispatch ---
     TuriEnv *get_turi_env() const { return turi_env; }
 
+    // --- G2 :exports ---
+    // Called by the `godot-export` native during _reload. Idempotent across
+    // reloads because clear_exports() runs first.
+    void add_export(const StringName &name, Variant::Type type,
+                    const Variant &default_value);
+    void clear_exports() { exports.clear(); }
+    const std::vector<ExportDecl> &get_exports() const { return exports; }
+    // Returns nullptr if `name` was not declared via `godot-export`.
+    const ExportDecl *find_export(const StringName &name) const;
+
 private:
-    String   source_code;
-    bool     loaded   = false;
-    TuriEnv *turi_env = nullptr;
+    String                  source_code;
+    bool                    loaded   = false;
+    TuriEnv                *turi_env = nullptr;
+    std::vector<ExportDecl> exports;
 };
 
 } // namespace godot

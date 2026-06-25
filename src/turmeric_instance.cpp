@@ -10,8 +10,10 @@
 #include <godot_cpp/variant/variant.hpp>
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <new>
+#include <string>
 
 extern "C" {
 #include "turi/eval.h"
@@ -20,6 +22,8 @@ extern "C" {
 }
 
 namespace godot {
+
+thread_local TurmericInstance *g_current_instance = nullptr;
 
 // --- Variant ↔ TuriValue marshalling ----------------------------------------
 // G1 scope: primitives only (int, float, bool, String + nil). Everything else
@@ -162,7 +166,13 @@ static void cb_call(GDExtensionScriptInstanceDataPtr p_self,
         args = args_buf;
     }
 
+    // G2 :exports — make `self` reachable to godot-prop-get / godot-prop-set
+    // for the duration of this call. Save/restore so nested calls
+    // (script method calling another script method) don't lose the outer.
+    TurmericInstance *prev_inst = g_current_instance;
+    g_current_instance = self;
     TuriValue ret = turi_call(env, fn, args, n);
+    g_current_instance = prev_inst;
 
     if (r_return) {
         Variant rv = turi_to_variant(ret);
@@ -184,14 +194,62 @@ static void cb_notification(GDExtensionScriptInstanceDataPtr /*p_instance*/,
     // (Node, etc.); having both fire would dispatch _ready twice.
 }
 
+// G2 :exports — property list backing storage. Each row's `name` field
+// points into name_storage (pointer-stable because reserve() is called before
+// any push_back). empty_name / empty_string are shared anchors for the
+// class_name / hint_string fields.
+struct PropertyListBuf {
+    StringName  empty_name;
+    String      empty_string;
+    std::vector<StringName>              name_storage;
+    std::vector<GDExtensionPropertyInfo> infos;
+};
+
 static const GDExtensionPropertyInfo *cb_get_property_list(
-        GDExtensionScriptInstanceDataPtr, uint32_t *r_count) {
-    if (r_count) *r_count = 0;
-    return nullptr;
+        GDExtensionScriptInstanceDataPtr p_instance, uint32_t *r_count) {
+    TurmericInstance *self = (TurmericInstance *)p_instance;
+    if (!self || !self->script) {
+        if (r_count) *r_count = 0;
+        return nullptr;
+    }
+    const std::vector<ExportDecl> &decls = self->script->get_exports();
+    if (decls.empty()) {
+        if (r_count) *r_count = 0;
+        return nullptr;
+    }
+    // If a prior list is outstanding (Godot didn't call free yet), drop it.
+    // Godot's protocol pairs the two; this is defensive.
+    if (self->property_list_buf) {
+        delete (PropertyListBuf *)self->property_list_buf;
+        self->property_list_buf = nullptr;
+    }
+    PropertyListBuf *buf = new PropertyListBuf();
+    buf->name_storage.reserve(decls.size());
+    buf->infos.reserve(decls.size());
+    for (const auto &d : decls) {
+        buf->name_storage.push_back(d.name);
+        GDExtensionPropertyInfo info{};
+        info.type        = (GDExtensionVariantType)d.type;
+        info.name        = (GDExtensionStringNamePtr)&buf->name_storage.back();
+        info.class_name  = (GDExtensionStringNamePtr)&buf->empty_name;
+        info.hint        = 0;       // PROPERTY_HINT_NONE
+        info.hint_string = (GDExtensionStringPtr)&buf->empty_string;
+        info.usage       = 7;       // PROPERTY_USAGE_DEFAULT (storage | editor | network)
+        buf->infos.push_back(info);
+    }
+    self->property_list_buf = buf;
+    if (r_count) *r_count = (uint32_t)buf->infos.size();
+    return buf->infos.data();
 }
 
-static void cb_free_property_list(
-        GDExtensionScriptInstanceDataPtr, const GDExtensionPropertyInfo *, uint32_t) {}
+static void cb_free_property_list(GDExtensionScriptInstanceDataPtr p_instance,
+                                  const GDExtensionPropertyInfo * /*p_list*/,
+                                  uint32_t /*p_count*/) {
+    TurmericInstance *self = (TurmericInstance *)p_instance;
+    if (!self || !self->property_list_buf) return;
+    delete (PropertyListBuf *)self->property_list_buf;
+    self->property_list_buf = nullptr;
+}
 
 static const GDExtensionMethodInfo *cb_get_method_list(
         GDExtensionScriptInstanceDataPtr, uint32_t *r_count) {
@@ -209,21 +267,83 @@ static GDExtensionInt cb_get_method_argument_count(
     return 0;
 }
 
-static GDExtensionBool cb_set(GDExtensionScriptInstanceDataPtr,
-                              GDExtensionConstStringNamePtr,
-                              GDExtensionConstVariantPtr) { return 0; }
-static GDExtensionBool cb_get(GDExtensionScriptInstanceDataPtr,
-                              GDExtensionConstStringNamePtr,
-                              GDExtensionVariantPtr) { return 0; }
+// G2 :exports — name lookup helper. Returns the script's ExportDecl (and its
+// utf8 key) for the given Godot StringName, or nullptr if the property was
+// not declared via godot-export.
+static const ExportDecl *find_export_for(TurmericInstance *self,
+                                         const StringName &name,
+                                         std::string *out_key) {
+    if (!self || !self->script) return nullptr;
+    const ExportDecl *d = self->script->find_export(name);
+    if (!d) return nullptr;
+    if (out_key) {
+        CharString cs = String(name).utf8();
+        out_key->assign(cs.get_data(), cs.length());
+    }
+    return d;
+}
+
+static GDExtensionBool cb_set(GDExtensionScriptInstanceDataPtr p_instance,
+                              GDExtensionConstStringNamePtr p_name,
+                              GDExtensionConstVariantPtr p_value) {
+    TurmericInstance *self = (TurmericInstance *)p_instance;
+    StringName name = *reinterpret_cast<const StringName *>(p_name);
+    std::string key;
+    const ExportDecl *d = find_export_for(self, name, &key);
+    if (!d) return 0;
+    Variant v(p_value);
+    // Coerce numeric/bool variants to the declared type so the script always
+    // sees the type it asked for; mismatches that can't coerce stay nil.
+    if (v.get_type() != d->type) {
+        switch (d->type) {
+            case Variant::FLOAT:  v = (double)v;   break;
+            case Variant::INT:    v = (int64_t)v;  break;
+            case Variant::BOOL:   v = (bool)v;     break;
+            case Variant::STRING: v = String(v);   break;
+            default: break;
+        }
+    }
+    self->property_values[key] = v;
+    return 1;
+}
+
+static GDExtensionBool cb_get(GDExtensionScriptInstanceDataPtr p_instance,
+                              GDExtensionConstStringNamePtr p_name,
+                              GDExtensionVariantPtr r_ret) {
+    TurmericInstance *self = (TurmericInstance *)p_instance;
+    StringName name = *reinterpret_cast<const StringName *>(p_name);
+    std::string key;
+    const ExportDecl *d = find_export_for(self, name, &key);
+    if (!d) return 0;
+    auto it = self->property_values.find(key);
+    Variant out = (it != self->property_values.end()) ? it->second : d->default_value;
+    if (r_ret) {
+        internal::gdextension_interface_variant_new_copy(r_ret, out._native_ptr());
+    }
+    return 1;
+}
+
 static GDExtensionVariantType cb_get_property_type(
-        GDExtensionScriptInstanceDataPtr, GDExtensionConstStringNamePtr,
+        GDExtensionScriptInstanceDataPtr p_instance,
+        GDExtensionConstStringNamePtr p_name,
         GDExtensionBool *r_is_valid) {
-    if (r_is_valid) *r_is_valid = 0;
-    return GDEXTENSION_VARIANT_TYPE_NIL;
+    TurmericInstance *self = (TurmericInstance *)p_instance;
+    StringName name = *reinterpret_cast<const StringName *>(p_name);
+    const ExportDecl *d = find_export_for(self, name, nullptr);
+    if (!d) {
+        if (r_is_valid) *r_is_valid = 0;
+        return GDEXTENSION_VARIANT_TYPE_NIL;
+    }
+    if (r_is_valid) *r_is_valid = 1;
+    return (GDExtensionVariantType)d->type;
 }
 
 static void cb_free(GDExtensionScriptInstanceDataPtr p_instance) {
     TurmericInstance *self = (TurmericInstance *)p_instance;
+    if (self && self->property_list_buf) {
+        delete (PropertyListBuf *)self->property_list_buf;
+        self->property_list_buf = nullptr;
+    }
     delete self;
 }
 

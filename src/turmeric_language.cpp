@@ -1,11 +1,15 @@
 #include "turmeric_language.h"
 #include "turmeric_script.h"
+#include "turmeric_instance.h"
 
 #include <godot_cpp/core/memory.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/variant/variant.hpp>
 
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 extern "C" {
 #include "turi/eval.h"
@@ -14,6 +18,10 @@ extern "C" {
 }
 
 namespace godot {
+
+// G2 :exports — defined in turmeric_script.cpp / turmeric_instance.cpp; the
+// natives below read these to find the right script / instance to operate on.
+extern thread_local TurmericScript   *g_reloading_script;
 
 static TurmericLanguage *s_singleton = nullptr;
 TurmericLanguage *TurmericLanguage::singleton() { return s_singleton; }
@@ -31,6 +39,134 @@ static TuriValue tg_native_println(TuriEnv *env, TuriValue *args, uint32_t n, vo
                           ? args[0].as_cstr
                           : "<non-cstr>";
     UtilityFunctions::print(String(msg));
+    return turi_nil();
+}
+
+// --- G2 :exports natives -----------------------------------------------------
+
+static Variant::Type tg_parse_export_type(const char *t) {
+    if (!t) return Variant::NIL;
+    if (!std::strcmp(t, "float"))  return Variant::FLOAT;
+    if (!std::strcmp(t, "int"))    return Variant::INT;
+    if (!std::strcmp(t, "bool"))   return Variant::BOOL;
+    if (!std::strcmp(t, "string")) return Variant::STRING;
+    return Variant::NIL;
+}
+
+static Variant tg_turi_to_variant_typed(TuriValue v, Variant::Type t) {
+    switch (t) {
+        case Variant::FLOAT:
+            if (v.tag == TURI_FLOAT) return (double)v.as_float;
+            if (v.tag == TURI_INT)   return (double)v.as_int;
+            return 0.0;
+        case Variant::INT:
+            if (v.tag == TURI_INT)   return (int64_t)v.as_int;
+            if (v.tag == TURI_FLOAT) return (int64_t)v.as_float;
+            return (int64_t)0;
+        case Variant::BOOL:
+            return (v.tag == TURI_BOOL) ? (bool)v.as_bool : false;
+        case Variant::STRING:
+            return String((v.tag == TURI_CSTR && v.as_cstr) ? v.as_cstr : "");
+        default: return Variant();
+    }
+}
+
+// (godot-export NAME TYPE DEFAULT) -- declares an inspector-visible property
+// for the currently-reloading script. Idempotent: a second call with the
+// same NAME updates the type/default in place.
+static TuriValue tg_native_export(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 3) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-export) expected 3 args (name type default)");
+        return turi_nil();
+    }
+    TurmericScript *script = g_reloading_script;
+    if (!script) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-export) called outside script reload");
+        return turi_nil();
+    }
+    if (args[0].tag != TURI_CSTR || !args[0].as_cstr ||
+        args[1].tag != TURI_CSTR || !args[1].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-export) name and type must be strings");
+        return turi_nil();
+    }
+    Variant::Type vt = tg_parse_export_type(args[1].as_cstr);
+    if (vt == Variant::NIL) {
+        UtilityFunctions::printerr(String("turmeric-godot: (godot-export) unsupported type: ") +
+                                   String(args[1].as_cstr));
+        return turi_nil();
+    }
+    script->add_export(StringName(args[0].as_cstr), vt,
+                       tg_turi_to_variant_typed(args[2], vt));
+    return turi_nil();
+}
+
+// Variant -> TuriValue for prop-get returns. Strings are not supported (the
+// cstr would have to outlive the call; punt for v1) and return nil with a
+// warning so the script can branch on the result.
+static TuriValue tg_variant_to_turi(const Variant &v) {
+    switch (v.get_type()) {
+        case Variant::NIL:   return turi_nil();
+        case Variant::BOOL:  return turi_bool((bool)v);
+        case Variant::INT:   return turi_int((int64_t)v);
+        case Variant::FLOAT: return turi_float((double)v);
+        case Variant::STRING:
+            UtilityFunctions::printerr(
+                "turmeric-godot: (godot-prop-get) string-typed properties cannot "
+                "be read from script in v1; returning nil");
+            return turi_nil();
+        default: return turi_nil();
+    }
+}
+
+// (godot-prop-get NAME) -- read a declared export on the current instance.
+// Falls back to the script-level default if the inspector has not assigned.
+static TuriValue tg_native_prop_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1 || args[0].tag != TURI_CSTR || !args[0].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-prop-get) expected 1 cstr arg (name)");
+        return turi_nil();
+    }
+    TurmericInstance *self = g_current_instance;
+    if (!self || !self->script) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-prop-get) called outside an instance method");
+        return turi_nil();
+    }
+    StringName name(args[0].as_cstr);
+    const ExportDecl *d = self->script->find_export(name);
+    if (!d) {
+        UtilityFunctions::printerr(String("turmeric-godot: (godot-prop-get) undeclared property: ") +
+                                   String(args[0].as_cstr));
+        return turi_nil();
+    }
+    std::string key = args[0].as_cstr;
+    auto it = self->property_values.find(key);
+    return tg_variant_to_turi((it != self->property_values.end()) ? it->second
+                                                                  : d->default_value);
+}
+
+// (godot-prop-set NAME VAL) -- write a declared export on the current
+// instance. Coerces VAL to the declared type when sensible.
+static TuriValue tg_native_prop_set(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2 || args[0].tag != TURI_CSTR || !args[0].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-prop-set) expected 2 args (name value)");
+        return turi_nil();
+    }
+    TurmericInstance *self = g_current_instance;
+    if (!self || !self->script) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-prop-set) called outside an instance method");
+        return turi_nil();
+    }
+    StringName name(args[0].as_cstr);
+    const ExportDecl *d = self->script->find_export(name);
+    if (!d) {
+        UtilityFunctions::printerr(String("turmeric-godot: (godot-prop-set) undeclared property: ") +
+                                   String(args[0].as_cstr));
+        return turi_nil();
+    }
+    self->property_values[std::string(args[0].as_cstr)] =
+        tg_turi_to_variant_typed(args[1], d->type);
     return turi_nil();
 }
 
@@ -101,7 +237,10 @@ void TurmericLanguage::init_turi() {
     // Gap 1 fix: register host natives as process-global defaults. Every
     // TurmericScript's TuriEnv (created in TurmericScript::ctor) auto-binds
     // these at turi_env_new time -- no per-env re-registration boilerplate.
-    turi_register_default_native("godot-println", tg_native_println, nullptr);
+    turi_register_default_native("godot-println",  tg_native_println,  nullptr);
+    turi_register_default_native("godot-export",   tg_native_export,   nullptr);
+    turi_register_default_native("godot-prop-get", tg_native_prop_get, nullptr);
+    turi_register_default_native("godot-prop-set", tg_native_prop_set, nullptr);
 }
 
 void TurmericLanguage::shutdown_turi() {

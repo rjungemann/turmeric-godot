@@ -38,6 +38,13 @@ static void script_diag_sink(TuriEnv * /*env*/, int level, const char *code,
     }
 }
 
+// G2 :exports — TLS pointer to the script whose source is currently being
+// evaluated by turi_eval. The `godot-export` native (registered in
+// turmeric_language.cpp) reads it to know which script's export list to
+// populate. Nested reload is not a real case (one editor thread, one script
+// at a time), but the save/restore keeps the invariant honest.
+thread_local TurmericScript *g_reloading_script = nullptr;
+
 TurmericScript::TurmericScript() {
     std::fprintf(stdout, "[turmeric-godot] TurmericScript::ctor\n");
     std::fflush(stdout);
@@ -84,6 +91,11 @@ Error TurmericScript::_reload(bool p_keep_state) {
     // born with.
     turi_env_reset(turi_env);
 
+    // G2 :exports — drop the prior reload's declarations before the new
+    // source registers them. Doing it after env reset means a script that
+    // removed an export will no longer offer it to the inspector.
+    clear_exports();
+
     // Gap 3 fix: route this env's diagnostics through our sink so they
     // surface in Godot's Output panel attributed to this script.
     static thread_local String s_path_buf;  // sink reads via pointer
@@ -106,7 +118,13 @@ Error TurmericScript::_reload(bool p_keep_state) {
     }
 
     CharString src_utf8 = source_code.utf8();
+    // G2 :exports — claim the TLS slot so `godot-export` natives invoked
+    // from top-level forms know which script to register against. Restore
+    // (not nullify) so nested reloads — should they ever exist — pop cleanly.
+    TurmericScript *prev_reloading = g_reloading_script;
+    g_reloading_script = this;
     TuriValue v = turi_eval(turi_env, src_utf8.get_data());
+    g_reloading_script = prev_reloading;
     if (v.tag == TURI_ERROR) {
         // The diag sink already surfaced the structured diagnostic; this
         // line is the eval-level summary.
@@ -151,6 +169,27 @@ void *TurmericScript::_instance_create(Object *p_for_object) const {
 
 void *TurmericScript::_placeholder_instance_create(Object *p_for_object) const {
     (void)p_for_object;
+    return nullptr;
+}
+
+// --- G2 :exports ---
+
+void TurmericScript::add_export(const StringName &name, Variant::Type type,
+                                const Variant &default_value) {
+    for (auto &e : exports) {
+        if (e.name == name) {
+            e.type          = type;
+            e.default_value = default_value;
+            return;
+        }
+    }
+    exports.push_back(ExportDecl{name, type, default_value});
+}
+
+const ExportDecl *TurmericScript::find_export(const StringName &name) const {
+    for (const auto &e : exports) {
+        if (e.name == name) return &e;
+    }
     return nullptr;
 }
 

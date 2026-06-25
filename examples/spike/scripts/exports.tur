@@ -1,0 +1,27 @@
+;; G2 :exports — declares inspector-visible properties and reads/writes
+;; them from script via the godot-prop-get / godot-prop-set natives.
+;;
+;; Driven by exports.gd, which attaches this script to a Node, edits
+;; speed/health through the script-instance Variant API, and asserts the
+;; round-trip.
+
+(godot-export "speed"     "float" 200.0)
+(godot-export "health"    "int"   100)
+(godot-export "alive"     "bool"  1)
+(godot-export "nick"      "string" "anon")  ; declared; reading from script returns nil in v1
+
+(defn _ready []
+  (godot-println "[exports.tur] _ready"))
+
+(defn read-speed []
+  (godot-prop-get "speed"))
+
+(defn read-health []
+  (godot-prop-get "health"))
+
+(defn read-alive []
+  (godot-prop-get "alive"))
+
+(defn bump-health [amt : int]
+  (godot-prop-set "health" (+ (godot-prop-get "health") amt))
+  (godot-prop-get "health"))
