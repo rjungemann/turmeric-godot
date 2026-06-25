@@ -1,4 +1,9 @@
-;; G1 demo script: top-level form runs when the script is loaded by Godot,
-;; routing through our (godot-println ...) native into Godot's print pipeline.
+;; G2 disk-loaded script: this file is read by TurmericResourceLoader
+;; when GDScript calls load("res://scripts/hello.tur"), then routed
+;; through TurmericScript::_reload.
 
-(godot-println "hello from hello.tur, loaded by TurmericScript::_reload")
+(defn _ready []
+  (godot-println "[hello.tur] _ready: I was loaded from disk via the ResourceFormatLoader"))
+
+(defn add [a : int b : int]
+  (+ a b))
