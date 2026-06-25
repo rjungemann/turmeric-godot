@@ -11,3 +11,7 @@ config_version=5
 
 config/name="turmeric-godot spike"
 config/features=PackedStringArray("4.3", "Forward Plus")
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/turmeric-godot-editor/plugin.cfg")

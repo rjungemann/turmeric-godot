@@ -81,6 +81,9 @@ public:
     // --- Frame hooks (called every frame in the editor) ---
     void _frame() override;
 
+    // --- Editor surface (called in editor builds) ---
+    bool _handles_global_class_type(const String &p_type) const override;
+
     // --- Test affordance ---
     // _validate is virtual-only on ScriptLanguageExtension and is not bound
     // as a publicly invocable method, so GDScript drivers can't call it

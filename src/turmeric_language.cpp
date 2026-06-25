@@ -754,6 +754,17 @@ void TurmericLanguage::_frame() {
     // Intentionally silent: this fires every editor frame.
 }
 
+bool TurmericLanguage::_handles_global_class_type(const String &p_type) const {
+    // No global script class registration in v1 -- the editor's class
+    // browser doesn't list Turmeric script types yet. Returning false
+    // for everything is the correct null implementation and clears the
+    // "Required virtual method must be overridden" warning the editor
+    // logs at startup. A real implementation lands when scripts can
+    // declare a class_name equivalent.
+    (void)p_type;
+    return false;
+}
+
 #undef TG_LOG
 
 } // namespace godot

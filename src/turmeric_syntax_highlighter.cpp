@@ -37,45 +37,24 @@ static bool is_symbol_cont(char c) {
     return is_symbol_start(c) || std::isdigit((unsigned char)c);
 }
 
-TurmericSyntaxHighlighter::TurmericSyntaxHighlighter() {
-    // A monochrome-friendly palette; the editor-plugin pass can override
-    // these from the user's theme.
-    color_keyword = Color(0.55f, 0.70f, 1.00f);   // blue
-    color_comment = Color(0.45f, 0.55f, 0.45f);   // dim green
-    color_string  = Color(0.85f, 0.65f, 0.45f);   // amber
-    color_number  = Color(0.70f, 0.85f, 0.55f);   // pale green
-    color_paren   = Color(0.65f, 0.65f, 0.65f);   // grey
-    color_symbol  = Color(0.90f, 0.90f, 0.90f);   // near-white
-}
+// Shared palette. A future editor-plugin pass can theme these from the
+// user's editor settings; for now they're file-static so both highlighter
+// classes paint the same colors.
+static const Color color_keyword(0.55f, 0.70f, 1.00f);
+static const Color color_comment(0.45f, 0.55f, 0.45f);
+static const Color color_string (0.85f, 0.65f, 0.45f);
+static const Color color_number (0.70f, 0.85f, 0.55f);
+static const Color color_paren  (0.65f, 0.65f, 0.65f);
+static const Color color_symbol (0.90f, 0.90f, 0.90f);
 
-TurmericSyntaxHighlighter::~TurmericSyntaxHighlighter() = default;
-
-void TurmericSyntaxHighlighter::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("highlight_line_for_test", "line"),
-                         &TurmericSyntaxHighlighter::highlight_line_for_test);
-}
-
-Dictionary TurmericSyntaxHighlighter::_get_line_syntax_highlighting(int32_t p_line) const {
-    TextEdit *te = get_text_edit();
-    if (!te) return Dictionary();
-    return tokenize(te->get_line(p_line));
-}
-
-Dictionary TurmericSyntaxHighlighter::highlight_line_for_test(const String &p_line) const {
-    return tokenize(p_line);
-}
-
-// Emit one column entry. Godot interprets the dict as a sorted-by-key
-// sequence of (column, attributes) pairs; the attributes apply from the
-// given column until the next entry. So a "default" color row is
-// implicit -- we push a row at each transition.
 static void push_run(Dictionary &out, int32_t col, const Color &c) {
     Dictionary entry;
     entry["color"] = c;
     out[col] = entry;
 }
 
-Dictionary TurmericSyntaxHighlighter::tokenize(const String &p_line) const {
+// Core tokenizer -- shared by both highlighter classes.
+static Dictionary tokenize_line(const String &p_line) {
     Dictionary out;
     CharString cs = p_line.utf8();
     const char *s = cs.get_data();
@@ -84,14 +63,11 @@ Dictionary TurmericSyntaxHighlighter::tokenize(const String &p_line) const {
     while (i < n) {
         char c = s[i];
 
-        // Comment: ; or ;; or ;;; to end-of-line.
         if (c == ';') {
             push_run(out, i, color_comment);
-            // Comment runs to end-of-line; no need to push another color.
-            break;
+            break;  // comment runs to end-of-line
         }
 
-        // String literal: "..." with simple \-escape.
         if (c == '"') {
             push_run(out, i, color_string);
             int j = i + 1;
@@ -105,13 +81,8 @@ Dictionary TurmericSyntaxHighlighter::tokenize(const String &p_line) const {
             continue;
         }
 
-        // Whitespace: don't emit a transition; the previous color persists.
-        if (std::isspace((unsigned char)c)) {
-            i++;
-            continue;
-        }
+        if (std::isspace((unsigned char)c)) { i++; continue; }
 
-        // Parens / brackets / braces.
         if (c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}') {
             push_run(out, i, color_paren);
             push_run(out, i + 1, color_symbol);
@@ -119,9 +90,6 @@ Dictionary TurmericSyntaxHighlighter::tokenize(const String &p_line) const {
             continue;
         }
 
-        // Number: leading digit, optionally negative if preceded by space
-        // (we don't try to distinguish unary minus from `-` symbol; the
-        // simpler rule is "starts with digit, then digits / dot / e").
         if (std::isdigit((unsigned char)c)) {
             push_run(out, i, color_number);
             int j = i + 1;
@@ -133,7 +101,6 @@ Dictionary TurmericSyntaxHighlighter::tokenize(const String &p_line) const {
             continue;
         }
 
-        // Symbol / keyword.
         if (is_symbol_start(c)) {
             int j = i + 1;
             while (j < n && is_symbol_cont(s[j])) j++;
@@ -141,17 +108,58 @@ Dictionary TurmericSyntaxHighlighter::tokenize(const String &p_line) const {
                 push_run(out, i, color_keyword);
                 push_run(out, j, color_symbol);
             } else {
-                // Same as default; only emit if previous was non-symbol.
                 push_run(out, i, color_symbol);
             }
             i = j;
             continue;
         }
 
-        // Unknown -- advance one char to avoid an infinite loop.
-        i++;
+        i++;  // unknown -- advance to avoid an infinite loop
     }
     return out;
+}
+
+// --- TurmericSyntaxHighlighter (SCENE-level; headless-testable) ------------
+
+TurmericSyntaxHighlighter::TurmericSyntaxHighlighter()  = default;
+TurmericSyntaxHighlighter::~TurmericSyntaxHighlighter() = default;
+
+void TurmericSyntaxHighlighter::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("highlight_line_for_test", "line"),
+                         &TurmericSyntaxHighlighter::highlight_line_for_test);
+}
+
+Dictionary TurmericSyntaxHighlighter::_get_line_syntax_highlighting(int32_t p_line) const {
+    TextEdit *te = get_text_edit();
+    if (!te) return Dictionary();
+    return tokenize_line(te->get_line(p_line));
+}
+
+Dictionary TurmericSyntaxHighlighter::highlight_line_for_test(const String &p_line) const {
+    return tokenize_line(p_line);
+}
+
+// --- TurmericEditorSyntaxHighlighter (EDITOR-level; @tool plugin wires) ----
+
+TurmericEditorSyntaxHighlighter::TurmericEditorSyntaxHighlighter()  = default;
+TurmericEditorSyntaxHighlighter::~TurmericEditorSyntaxHighlighter() = default;
+
+void TurmericEditorSyntaxHighlighter::_bind_methods() {}
+
+Dictionary TurmericEditorSyntaxHighlighter::_get_line_syntax_highlighting(int32_t p_line) const {
+    TextEdit *te = get_text_edit();
+    if (!te) return Dictionary();
+    return tokenize_line(te->get_line(p_line));
+}
+
+String TurmericEditorSyntaxHighlighter::_get_name() const {
+    return String("Turmeric");
+}
+
+PackedStringArray TurmericEditorSyntaxHighlighter::_get_supported_languages() const {
+    PackedStringArray langs;
+    langs.push_back("tur");
+    return langs;
 }
 
 } // namespace godot

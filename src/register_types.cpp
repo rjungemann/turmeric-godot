@@ -27,6 +27,14 @@ void initialize_turmeric_godot_module(ModuleInitializationLevel p_level) {
     std::fprintf(stdout, "[turmeric-godot] initialize(level=%d)\n", (int)p_level);
     std::fflush(stdout);
 
+    if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+        // EditorSyntaxHighlighter's base type isn't available until the
+        // editor level. The @tool plugin in addons/turmeric-godot-editor
+        // instantiates this class and hands it to
+        // ScriptEditor.register_syntax_highlighter.
+        GDREGISTER_CLASS(TurmericEditorSyntaxHighlighter);
+        return;
+    }
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
