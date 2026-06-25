@@ -11,9 +11,37 @@ Binaries land under examples/spike/bin/ so the bundled Godot test project can
 load them via `res://bin/...`.
 """
 
+import os
+
 env = SConscript("godot-cpp/SConstruct")
 
-env.Append(CPPPATH=["src/"])
+# --- libturi linkage ---------------------------------------------------------
+# TURMERIC_ROOT may be set via env or ARGUMENTS; defaults to ../turmeric
+turmeric_root = ARGUMENTS.get(
+    "turmeric_root",
+    os.environ.get("TURMERIC_ROOT", os.path.abspath("../turmeric")),
+)
+libturi_a = os.path.join(turmeric_root, "build-rel", "src", "libturi.a")
+if not os.path.isfile(libturi_a):
+    print("ERROR: libturi.a not found at {}".format(libturi_a))
+    print("Build it with: (cd {} && cmake --build build-rel --target libturi -j)".format(turmeric_root))
+    Exit(1)
+
+env.Append(CPPPATH=[
+    "src/",
+    os.path.join(turmeric_root, "src"),
+    # turi/env.h transitively needs diag.h (compiler/), arena.h/buf.h/symbols.h
+    # (runtime/). See docs/reported/libturi-embed-include-paths.md in the
+    # turmeric repo for the cleanup that would let an embedder pass just one -I.
+    os.path.join(turmeric_root, "src", "turi"),
+    os.path.join(turmeric_root, "src", "compiler"),
+    os.path.join(turmeric_root, "src", "runtime"),
+])
+env.Append(LIBS=[File(libturi_a)])
+# libturi pulls in dlopen/dlsym for spice loading on macOS.
+if env["platform"] == "macos":
+    env.Append(LINKFLAGS=["-Wl,-no_warn_duplicate_libraries"])
+
 sources = Glob("src/*.cpp")
 
 if env["platform"] == "macos":

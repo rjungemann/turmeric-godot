@@ -8,6 +8,8 @@
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 
+struct TuriEnv;
+
 namespace godot {
 
 // G0 spike: ScriptLanguageExtension that registers `.tur` and prints to
@@ -23,6 +25,22 @@ protected:
 public:
     TurmericLanguage();
     ~TurmericLanguage();
+
+    // The shared interpreter environment. For G1 this is a single env shared
+    // across all scripts; a per-script env comes in the follow-up slice.
+    TuriEnv *get_turi_env() const { return turi_env; }
+
+    // Process-wide singleton, set by initialize_turmeric_godot_module.
+    static TurmericLanguage *singleton();
+
+private:
+    TuriEnv *turi_env = nullptr;
+
+    void init_turi();
+    void shutdown_turi();
+    void smoke_test();
+
+public:
 
     // --- Identity ---
     String _get_name() const override;

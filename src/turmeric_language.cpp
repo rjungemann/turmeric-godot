@@ -1,8 +1,44 @@
 #include "turmeric_language.h"
+#include "turmeric_script.h"
+
+#include <godot_cpp/core/memory.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 #include <cstdio>
+#include <cstring>
+
+extern "C" {
+#include "turi/eval.h"
+#include "turi/env.h"
+#include "turi/value.h"
+
+// libturi embed-API gap: registered natives are only callable through the
+// elaborator when g_interpret_mode is true, but neither turi_init nor
+// turi_env_new flips this for embedders. See
+// docs/reported/libturi-embed-interpret-mode-flag.md in the turmeric repo.
+extern bool g_interpret_mode;
+}
 
 namespace godot {
+
+static TurmericLanguage *s_singleton = nullptr;
+TurmericLanguage *TurmericLanguage::singleton() { return s_singleton; }
+
+// --- Native: (godot/println msg) ---------------------------------------------
+// Routes a Turmeric cstr argument through Godot's print pipeline so it shows
+// up in the editor Output panel + the running game's stdout.
+static TuriValue tg_native_println(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) {
+        std::fprintf(stderr, "[turmeric-godot] (godot/println): expected 1 arg, got %u\n", n);
+        return turi_nil();
+    }
+    const char *msg = (args[0].tag == TURI_CSTR && args[0].as_cstr)
+                          ? args[0].as_cstr
+                          : "<non-cstr>";
+    UtilityFunctions::print(String(msg));
+    return turi_nil();
+}
 
 #define TG_LOG(method) \
     std::fprintf(stdout, "[turmeric-godot] %s called\n", method); \
@@ -10,10 +46,12 @@ namespace godot {
 
 TurmericLanguage::TurmericLanguage() {
     TG_LOG("ctor");
+    s_singleton = this;
 }
 
 TurmericLanguage::~TurmericLanguage() {
     TG_LOG("dtor");
+    if (s_singleton == this) s_singleton = nullptr;
 }
 
 // --- Identity ---
@@ -64,12 +102,43 @@ PackedStringArray TurmericLanguage::_get_string_delimiters() const {
 
 // --- Lifecycle ---
 
+void TurmericLanguage::init_turi() {
+    turi_init(false);
+    g_interpret_mode = true; // see embed-API gap report
+    turi_env = turi_env_new();
+    turi_env_register_native(turi_env, "godot-println", tg_native_println, nullptr);
+}
+
+void TurmericLanguage::shutdown_turi() {
+    if (turi_env) {
+        turi_env_free(turi_env);
+        turi_env = nullptr;
+    }
+}
+
+void TurmericLanguage::smoke_test() {
+    // Arithmetic round-trip (env-typed).
+    char type_tag[64] = {0};
+    TuriValue v = turi_eval_typed(turi_env, "(+ 1 2)", type_tag, sizeof(type_tag));
+    char repr[128] = {0};
+    turi_value_repr(repr, sizeof(repr), v);
+    std::fprintf(stdout, "[turmeric-godot] libturi smoke: (+ 1 2) = %s : %s\n",
+                 repr, type_tag);
+    std::fflush(stdout);
+
+    // godot/println round-trip: calls back into Godot via UtilityFunctions::print.
+    (void)turi_eval(turi_env, "(godot-println \"hello from turmeric (via native)\")");
+}
+
 void TurmericLanguage::_init() {
     TG_LOG("_init");
+    init_turi();
+    smoke_test();
 }
 
 void TurmericLanguage::_finish() {
     TG_LOG("_finish");
+    shutdown_turi();
 }
 
 // --- Feature flags ---
@@ -96,7 +165,7 @@ Dictionary TurmericLanguage::_validate(const String &p_script,
 
 Object *TurmericLanguage::_create_script() const {
     TG_LOG("_create_script");
-    return nullptr; // spike: no script objects yet
+    return memnew(TurmericScript);
 }
 
 // --- Reloading ---

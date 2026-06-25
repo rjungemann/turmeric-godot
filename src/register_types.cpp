@@ -11,6 +11,7 @@
 #include <cstdio>
 
 #include "turmeric_language.h"
+#include "turmeric_script.h"
 
 using namespace godot;
 
@@ -25,6 +26,7 @@ void initialize_turmeric_godot_module(ModuleInitializationLevel p_level) {
     }
 
     GDREGISTER_CLASS(TurmericLanguage);
+    GDREGISTER_CLASS(TurmericScript);
 
     turmeric_language_singleton = memnew(TurmericLanguage);
     Engine::get_singleton()->register_script_language(turmeric_language_singleton);
