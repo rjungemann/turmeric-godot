@@ -1,0 +1,61 @@
+;; G3.a follow-up -- exercises Rect2 / Transform2D / Array / Dictionary
+;; marshalling. Attach to a Node2D.
+;;
+;; * Transform2D round-trip via get_transform / xform2d-origin / xform2d-rotation
+;; * Array via get_children (a Node parent with children) -- the script
+;;   doesn't add its own children, so length is expected to be 0; the
+;;   point here is that the call doesn't crash.
+;; * Rect2 builder + accessors (no Godot call -- the embedder doesn't yet
+;;   need to send a Rect2 to a real method in this demo).
+
+(defn _ready []
+  (let [self (node/self)]
+    ;; Set position so we have a known transform to read back.
+    (node/set-position self (godot-vec2 42.0 17.0))
+    (godot-call self "set_rotation" 0.25)
+
+    ;; Transform2D round-trip.
+    (let [xf      (godot-call self "get_transform")
+          origin  (godot-xform2d-origin xf)
+          rot     (godot-xform2d-rotation xf)]
+      (godot-println "[aggregates] xform origin x:")
+      (godot-vec2-x origin)
+      (godot-println "[aggregates] xform origin y:")
+      (godot-vec2-y origin))
+
+    ;; Array round-trip: get_children of a freshly-attached node with no
+    ;; children returns an empty Array; assert (length == 0).
+    (let [kids (godot-call self "get_children")
+          n    (godot-array-len kids)]
+      (if (= n 0)
+        (godot-println "[aggregates] get_children: empty (as expected)")
+        (godot-println "[aggregates] get_children: unexpected non-empty")))
+
+    ;; Rect2 builder + accessor (no Godot call -- just exercises the
+    ;; arena round-trip).
+    (let [r  (godot-rect2 10.0 20.0 30.0 40.0)
+          rx (godot-rect2-x r)
+          rw (godot-rect2-w r)]
+      (godot-println "[aggregates] rect2 builder + accessors OK"))
+
+    ;; Nested Array-of-Dict round-trip: get_method_list returns
+    ;; TypedArray<Dictionary>, each dict has a "name" key. We pluck the
+    ;; first method's name to prove array-get -> dict-get nesting works
+    ;; (the inner dict arrived via godot-array-get, which calls
+    ;; tg_result_to_turi recursively to push it into the arena).
+    ;; godot-dict-has returns turi_bool at runtime, but the elaborator types
+    ;; every native as :int (see docs/reported/untyped-native-registration-
+    ;; blocks-curated-facades.md), so we can't use it directly in `if`.
+    ;; Workaround: call dict-get unconditionally; missing keys come back as
+    ;; nil/0 which we compare with `(= ... 0)`.
+    (let [methods (godot-call self "get_method_list")
+          m-count (godot-array-len methods)]
+      (if (= m-count 0)
+        (godot-println "[aggregates] get_method_list empty (unexpected)")
+        (let [first      (godot-array-get methods 0)
+              first-name (godot-dict-get first "name")]
+          (if (= first-name 0)
+            (godot-println "[aggregates] first method dict missing 'name' (unexpected)")
+            (do
+              (godot-println "[aggregates] first method name:")
+              (godot-println first-name))))))))

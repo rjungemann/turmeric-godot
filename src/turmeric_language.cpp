@@ -352,6 +352,19 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native("godot-color-g",  tg_native_godot_color_g, nullptr);
     turi_register_default_native("godot-color-b",  tg_native_godot_color_b, nullptr);
     turi_register_default_native("godot-color-a",  tg_native_godot_color_a, nullptr);
+    // G3.a follow-up -- Rect2 / Transform / Array / Dictionary marshalling.
+    turi_register_default_native("godot-rect2",            tg_native_godot_rect2,           nullptr);
+    turi_register_default_native("godot-rect2-x",          tg_native_godot_rect2_x,         nullptr);
+    turi_register_default_native("godot-rect2-y",          tg_native_godot_rect2_y,         nullptr);
+    turi_register_default_native("godot-rect2-w",          tg_native_godot_rect2_w,         nullptr);
+    turi_register_default_native("godot-rect2-h",          tg_native_godot_rect2_h,         nullptr);
+    turi_register_default_native("godot-xform2d-origin",   tg_native_godot_xform2d_origin,  nullptr);
+    turi_register_default_native("godot-xform2d-rotation", tg_native_godot_xform2d_rotation,nullptr);
+    turi_register_default_native("godot-xform3d-origin",   tg_native_godot_xform3d_origin,  nullptr);
+    turi_register_default_native("godot-array-len",        tg_native_godot_array_len,       nullptr);
+    turi_register_default_native("godot-array-get",        tg_native_godot_array_get,       nullptr);
+    turi_register_default_native("godot-dict-has",         tg_native_godot_dict_has,        nullptr);
+    turi_register_default_native("godot-dict-get",         tg_native_godot_dict_get,        nullptr);
 }
 
 void TurmericLanguage::shutdown_turi() {

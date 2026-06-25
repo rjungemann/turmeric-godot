@@ -44,6 +44,31 @@ TuriValue tg_native_godot_color_g(TuriEnv *env, TuriValue *args, uint32_t n, voi
 TuriValue tg_native_godot_color_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_color_a(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// (godot-rect2 x y w h) -> :int arena handle wrapping Rect2(x, y, w, h).
+TuriValue tg_native_godot_rect2(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_rect2_x(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_rect2_y(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_rect2_w(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_rect2_h(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+// Transform2D / Transform3D -- accessors only for v1; full matrix
+// construction is deferred until a real demo needs it. Embedders that need
+// to *set* a transform today construct it via Godot's own helpers and
+// hand the resulting handle back through godot-call.
+TuriValue tg_native_godot_xform2d_origin(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_xform2d_rotation(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_xform3d_origin(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+// (godot-array-len h) -> :int  (length of Array arena handle, or 0 for nil)
+// (godot-array-get h i) -> marshalled element (primitive or arena handle)
+TuriValue tg_native_godot_array_len(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_array_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+// (godot-dict-has h key) -> :bool  (key: :cstr)
+// (godot-dict-get h key) -> marshalled element (nil if missing)
+TuriValue tg_native_godot_dict_has(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_dict_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 } // namespace godot
 
 #endif
