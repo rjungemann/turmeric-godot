@@ -1,43 +1,42 @@
-;; G3.a — generic ClassDB proxy + Variant arena (Vector2 + Object + String).
+;; G3.a + G3.b -- generic ClassDB proxy + Variant arena + curated facade.
 ;;
-;; Attach this script to a Node2D. On _ready it:
-;;   1. set_rotation 0.5 (primitive in)
-;;   2. set_position via (godot-vec2 ...) (arena in)
-;;   3. get_position decomposed via godot-vec2-x/y (arena out)
-;;   4. get_name -> :cstr  (string-arena out)
-;;   5. get_node "Sibling" -> :int Object handle (compare to 0 since :int
-;;      is not :bool); a real test attaches a Sibling child first.
+;; Attach to a Node2D. Demonstrates the baked-in `node/...` prelude for
+;; common operations, falling back to the godot-* natives where the prelude
+;; doesn't have a typed wrapper (rotation -- float return; get-name -- cstr).
 
 (defn _ready []
-  (let [self (godot-self)]
+  (let [self (node/self)]
+    ;; Rotation: native call (returns :float at runtime, but the elaborator
+    ;; sees godot-call as :int -- so we can't yet wrap (node/set-rotation)
+    ;; with a `: float` body. Direct call works fine.
     (godot-println "[classdb_call] set_rotation 0.5")
     (godot-call self "set_rotation" 0.5)
 
+    ;; Position: curated wrappers.
     (godot-println "[classdb_call] set_position (100, 50)")
-    (godot-call self "set_position" (godot-vec2 100.0 50.0))
+    (node/set-position self (godot-vec2 100.0 50.0))
 
-    (let [pos (godot-call self "get_position")]
-      (godot-println "[classdb_call] read position back")
+    (let [pos (node/get-position self)]
+      (godot-println "[classdb_call] read position back via node/get-position")
       (godot-vec2-x pos)
       (godot-vec2-y pos))
 
-    ;; Color round-trip: Node2D inherits CanvasItem.modulate (Color property).
-    (godot-call self "set_modulate" (godot-color 0.5 0.25 0.75 1.0))
-    (let [mod (godot-call self "get_modulate")]
-      (godot-println "[classdb_call] modulate round-trip; r/g/b/a follows:")
+    ;; Modulate: curated wrappers.
+    (node/set-modulate self (godot-color 0.5 0.25 0.75 1.0))
+    (let [mod (node/get-modulate self)]
+      (godot-println "[classdb_call] modulate round-trip via node/...:")
       (godot-color-r mod)
       (godot-color-g mod)
       (godot-color-b mod)
       (godot-color-a mod))
 
+    ;; Name: native call (cstr return -- elaborator sees :int).
     (let [name (godot-call self "get_name")]
       (godot-println "[classdb_call] my get_name returned:")
       (godot-println name))
 
-    ;; Object-return round-trip. get_node returns 0 for a missing path; we
-    ;; compare explicitly (TURI :int is not :bool, so `(if h ...)` is rejected
-    ;; at elaboration time -- a real type system Doing The Right Thing).
-    (let [sib (godot-call self "get_node" "Sibling")]
+    ;; Traversal: curated wrapper.
+    (let [sib (node/get-node self "Sibling")]
       (if (= sib 0)
         (godot-println "[classdb_call] no Sibling node found (expected on a bare scene)")
         (godot-println (godot-call sib "get_name"))))))

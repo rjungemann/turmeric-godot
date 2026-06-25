@@ -17,6 +17,8 @@ extern "C" {
 #include "turi/value.h"
 }
 
+#include "bridge/prelude.h"
+
 namespace godot {
 
 static TurmericLanguage *get_lang() {
@@ -114,6 +116,22 @@ Error TurmericScript::_reload(bool p_keep_state) {
         if (!dir.is_empty()) {
             CharString dir_cs = dir.utf8();
             turi_env_set_module_base_dir(turi_env, dir_cs.get_data());
+        }
+    }
+
+    // G3.b -- evaluate the baked-in node/... prelude before the user's
+    // source so the curated facade (node/set-position, node/get-modulate,
+    // ...) is in scope. Prelude failures are fatal: a broken prelude means
+    // every script in the editor would silently lose access to the facade,
+    // which is the kind of bug we want loud.
+    {
+        TuriValue pv = turi_eval(turi_env, TG_PRELUDE_SOURCE);
+        if (pv.tag == TURI_ERROR) {
+            UtilityFunctions::printerr(
+                String("turmeric-godot: baked-in prelude failed to eval: ") +
+                String(pv.as_error ? pv.as_error : "<unknown>"));
+            loaded = false;
+            return ERR_BUG;
         }
     }
 
