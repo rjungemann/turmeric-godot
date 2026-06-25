@@ -2,53 +2,72 @@
 
 namespace godot {
 
-// Scope deliberately small. Two things constrain it:
+// As of libturi 78329855e (turmeric/docs/archive/untyped-native-registration-
+// blocks-curated-facades.md) the elaborator consults a typed-native registry,
+// so accessor wrappers that declare honest non-:int return types now
+// type-check. The prelude is correspondingly larger: vec2/vec3/color/rect2
+// accessors all return :float, and we add aliases for the void-returning
+// builders too.
 //
-//   1. libturi natives are currently registered without explicit type
-//      signatures, so the elaborator treats every godot-* native as
-//      returning :int. Wrapping (godot-vec2-x v) in a defn declared
-//      `: float` produces TUR-E0707 (return-type mismatch). Until libturi
-//      grows typed-native registration, accessors stay un-wrapped -- users
-//      call the godot-* native directly when they need the float out.
-//
-//   2. The full ~30-type spice facade lives in spice/src/godot/ in the
-//      plan; this baked-in prelude is the MVP that proves the surface
-//      without standing up the spice machinery. Grow entries one per
-//      script-side need; promote to the spice tree later.
-//
-// What IS safe to wrap today: void-returning setters and opaque-handle
-// passers (functions whose declared and elaborated types agree because
-// nothing reaches into the dynamic tag).
+// What still NEEDS direct godot-* calls instead of a wrapper: anything that
+// goes through (godot-call ...), since godot-call's return type is dynamic
+// per method name. Those wrappers either stay :int (passing the handle
+// through) or live in the generated extension_api.json facade.
 const char *TG_PRELUDE_SOURCE = R"TURMERIC(
-;; turmeric-godot baked-in prelude (G3.b MVP).
-;; A thin `node/...` facade over godot-call. Only wraps methods whose
-;; declared type matches the elaborator's view of the underlying native;
-;; for accessors that return float / cstr (vec2-x, get-name, get-rotation,
-;; ...), call the godot-* native directly until libturi grows typed natives.
+;; turmeric-godot baked-in prelude (G3.b, post-typed-natives upgrade).
+;; Curated short-form facade over the godot-* natives.
+
+;; --- Builders ---------------------------------------------------------------
+(defn node/vec2 [x : float y : float] : int (godot-vec2 x y))
+(defn node/vec3 [x : float y : float z : float] : int (godot-vec3 x y z))
+(defn node/color [r : float g : float b : float a : float] : int
+  (godot-color r g b a))
+(defn node/rect2 [x : float y : float w : float h : float] : int
+  (godot-rect2 x y w h))
+
+;; --- Component accessors (typed now that natives are typed) ----------------
+(defn node/vec2-x [v : int] : float (godot-vec2-x v))
+(defn node/vec2-y [v : int] : float (godot-vec2-y v))
+(defn node/vec3-x [v : int] : float (godot-vec3-x v))
+(defn node/vec3-y [v : int] : float (godot-vec3-y v))
+(defn node/vec3-z [v : int] : float (godot-vec3-z v))
+(defn node/color-r [c : int] : float (godot-color-r c))
+(defn node/color-g [c : int] : float (godot-color-g c))
+(defn node/color-b [c : int] : float (godot-color-b c))
+(defn node/color-a [c : int] : float (godot-color-a c))
+(defn node/rect2-x [r : int] : float (godot-rect2-x r))
+(defn node/rect2-y [r : int] : float (godot-rect2-y r))
+(defn node/rect2-w [r : int] : float (godot-rect2-w r))
+(defn node/rect2-h [r : int] : float (godot-rect2-h r))
 
 ;; --- Self -------------------------------------------------------------------
 (defn node/self [] : int (godot-self))
 
-;; --- Node2D position --------------------------------------------------------
-;; pos is an arena handle (vec2). Returned by node/get-position.
+;; --- Node2D position / scale -- pos is an arena vec2 handle ----------------
 (defn node/set-position [self : int pos : int]
   (godot-call self "set_position" pos))
 (defn node/get-position [self : int] : int
   (godot-call self "get_position"))
+(defn node/set-scale [self : int scale : int]
+  (godot-call self "set_scale" scale))
 
-;; --- CanvasItem modulate ----------------------------------------------------
-;; c is an arena handle (color). Returned by node/get-modulate.
+;; --- CanvasItem modulate -- c is an arena color handle ---------------------
 (defn node/set-modulate [self : int c : int]
   (godot-call self "set_modulate" c))
 (defn node/get-modulate [self : int] : int
   (godot-call self "get_modulate"))
 
-;; --- Node traversal ---------------------------------------------------------
-;; Returns 0 (null) when the path doesn't resolve. Compare with (= h 0).
+;; --- Node traversal --------------------------------------------------------
+;; Returns 0 (null) when the path doesn't resolve. Compare with (= h 0)
+;; because godot-call's :int return can't be narrowed to :bool statically.
 (defn node/get-node [self : int path : cstr] : int
   (godot-call self "get_node" path))
 (defn node/queue-free [self : int]
   (godot-call self "queue_free"))
+
+;; --- Dictionary helpers -- godot-dict-has now returns :bool, so the
+;;     usual (if (dict-has? d k) ...) idiom works directly. ------------------
+(defn dict-has? [d : int key : cstr] : bool (godot-dict-has d key))
 )TURMERIC";
 
 } // namespace godot

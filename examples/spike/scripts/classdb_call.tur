@@ -16,10 +16,13 @@
     (godot-println "[classdb_call] set_position (100, 50)")
     (node/set-position self (godot-vec2 100.0 50.0))
 
-    (let [pos (node/get-position self)]
-      (godot-println "[classdb_call] read position back via node/get-position")
-      (godot-vec2-x pos)
-      (godot-vec2-y pos))
+    ;; Typed accessors (post-typed-natives upgrade) -- the wrapper returns
+    ;; :float now, so we can let-bind components into typed locals.
+    (let [pos (node/get-position self)
+          px  (node/vec2-x pos)
+          py  (node/vec2-y pos)
+          sum (+ px py)]
+      (godot-println "[classdb_call] read position back via node/get-position"))
 
     ;; Modulate: curated wrappers.
     (node/set-modulate self (godot-color 0.5 0.25 0.75 1.0))

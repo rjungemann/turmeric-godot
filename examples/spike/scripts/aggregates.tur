@@ -43,19 +43,17 @@
     ;; first method's name to prove array-get -> dict-get nesting works
     ;; (the inner dict arrived via godot-array-get, which calls
     ;; tg_result_to_turi recursively to push it into the arena).
-    ;; godot-dict-has returns turi_bool at runtime, but the elaborator types
-    ;; every native as :int (see docs/reported/untyped-native-registration-
-    ;; blocks-curated-facades.md), so we can't use it directly in `if`.
-    ;; Workaround: call dict-get unconditionally; missing keys come back as
-    ;; nil/0 which we compare with `(= ... 0)`.
+    ;; godot-dict-has is now typed :bool (libturi 78329855e), so the
+    ;; (if (dict-has? d k) ...) idiom works directly via the prelude
+    ;; alias. godot-dict-get still returns dynamic :int and goes through
+    ;; the (= h 0) check.
     (let [methods (godot-call self "get_method_list")
           m-count (godot-array-len methods)]
       (if (= m-count 0)
         (godot-println "[aggregates] get_method_list empty (unexpected)")
-        (let [first      (godot-array-get methods 0)
-              first-name (godot-dict-get first "name")]
-          (if (= first-name 0)
-            (godot-println "[aggregates] first method dict missing 'name' (unexpected)")
-            (do
+        (let [first (godot-array-get methods 0)]
+          (if (dict-has? first "name")
+            (let [first-name (godot-dict-get first "name")]
               (godot-println "[aggregates] first method name:")
-              (godot-println first-name))))))))
+              (godot-println first-name))
+            (godot-println "[aggregates] first method dict missing 'name' (unexpected))")))))))

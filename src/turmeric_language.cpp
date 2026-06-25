@@ -501,40 +501,51 @@ void TurmericLanguage::init_turi() {
     // Gap 1 fix: register host natives as process-global defaults. Every
     // TurmericScript's TuriEnv (created in TurmericScript::ctor) auto-binds
     // these at turi_env_new time -- no per-env re-registration boilerplate.
-    turi_register_default_native("godot-println",  tg_native_println,  nullptr);
-    turi_register_default_native("godot-export",   tg_native_export,   nullptr);
-    turi_register_default_native("godot-prop-get", tg_native_prop_get, nullptr);
-    turi_register_default_native("godot-prop-set", tg_native_prop_set, nullptr);
-    turi_register_default_native("godot-signal",   tg_native_signal,   nullptr);
-    turi_register_default_native("emit-signal",    tg_native_emit_signal, nullptr);
-    // G3.a — generic ClassDB proxy + Variant arena (Vector2/Vector3 today).
-    turi_register_default_native("godot-self",     tg_native_godot_self, nullptr);
-    turi_register_default_native("godot-call",     tg_native_godot_call, nullptr);
-    turi_register_default_native("godot-vec2",     tg_native_godot_vec2, nullptr);
-    turi_register_default_native("godot-vec3",     tg_native_godot_vec3, nullptr);
-    turi_register_default_native("godot-vec2-x",   tg_native_godot_vec2_x, nullptr);
-    turi_register_default_native("godot-vec2-y",   tg_native_godot_vec2_y, nullptr);
-    turi_register_default_native("godot-vec3-x",   tg_native_godot_vec3_x, nullptr);
-    turi_register_default_native("godot-vec3-y",   tg_native_godot_vec3_y, nullptr);
-    turi_register_default_native("godot-vec3-z",   tg_native_godot_vec3_z, nullptr);
-    turi_register_default_native("godot-color",    tg_native_godot_color,   nullptr);
-    turi_register_default_native("godot-color-r",  tg_native_godot_color_r, nullptr);
-    turi_register_default_native("godot-color-g",  tg_native_godot_color_g, nullptr);
-    turi_register_default_native("godot-color-b",  tg_native_godot_color_b, nullptr);
-    turi_register_default_native("godot-color-a",  tg_native_godot_color_a, nullptr);
-    // G3.a follow-up -- Rect2 / Transform / Array / Dictionary marshalling.
-    turi_register_default_native("godot-rect2",            tg_native_godot_rect2,           nullptr);
-    turi_register_default_native("godot-rect2-x",          tg_native_godot_rect2_x,         nullptr);
-    turi_register_default_native("godot-rect2-y",          tg_native_godot_rect2_y,         nullptr);
-    turi_register_default_native("godot-rect2-w",          tg_native_godot_rect2_w,         nullptr);
-    turi_register_default_native("godot-rect2-h",          tg_native_godot_rect2_h,         nullptr);
-    turi_register_default_native("godot-xform2d-origin",   tg_native_godot_xform2d_origin,  nullptr);
-    turi_register_default_native("godot-xform2d-rotation", tg_native_godot_xform2d_rotation,nullptr);
-    turi_register_default_native("godot-xform3d-origin",   tg_native_godot_xform3d_origin,  nullptr);
-    turi_register_default_native("godot-array-len",        tg_native_godot_array_len,       nullptr);
-    turi_register_default_native("godot-array-get",        tg_native_godot_array_get,       nullptr);
-    turi_register_default_native("godot-dict-has",         tg_native_godot_dict_has,        nullptr);
-    turi_register_default_native("godot-dict-get",         tg_native_godot_dict_get,        nullptr);
+    //
+    // Return-type signatures (TUR_NRT_*, landed upstream in 78329855e):
+    //   * Untyped natives use plain turi_register_default_native and keep
+    //     the historical :int default. godot-call / godot-prop-get /
+    //     godot-array-get / godot-dict-get all return dynamic types -- a
+    //     per-method return type isn't statically expressible, so :int
+    //     stays right for those.
+    //   * Everything else gets a precise return type so curated wrappers
+    //     can declare honest signatures (godot-vec2-x : float, etc.).
+    turi_register_default_native_typed("godot-println",   tg_native_println,      nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("godot-export",    tg_native_export,       nullptr, TUR_NRT_VOID);
+    turi_register_default_native      ("godot-prop-get",  tg_native_prop_get,     nullptr);                  // dynamic
+    turi_register_default_native_typed("godot-prop-set",  tg_native_prop_set,     nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("godot-signal",    tg_native_signal,       nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("emit-signal",     tg_native_emit_signal,  nullptr, TUR_NRT_VOID);
+
+    // G3.a -- generic ClassDB proxy + Variant arena.
+    turi_register_default_native      ("godot-self",       tg_native_godot_self,    nullptr);                // :int Object handle
+    turi_register_default_native      ("godot-call",       tg_native_godot_call,    nullptr);                // dynamic
+    turi_register_default_native      ("godot-vec2",       tg_native_godot_vec2,    nullptr);                // :int arena handle
+    turi_register_default_native      ("godot-vec3",       tg_native_godot_vec3,    nullptr);
+    turi_register_default_native_typed("godot-vec2-x",     tg_native_godot_vec2_x,  nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-vec2-y",     tg_native_godot_vec2_y,  nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-vec3-x",     tg_native_godot_vec3_x,  nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-vec3-y",     tg_native_godot_vec3_y,  nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-vec3-z",     tg_native_godot_vec3_z,  nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native      ("godot-color",      tg_native_godot_color,   nullptr);
+    turi_register_default_native_typed("godot-color-r",    tg_native_godot_color_r, nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-color-g",    tg_native_godot_color_g, nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-color-b",    tg_native_godot_color_b, nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-color-a",    tg_native_godot_color_a, nullptr, TUR_NRT_FLOAT);
+
+    // G3.a follow-up -- Rect2 / Transform / Array / Dictionary.
+    turi_register_default_native      ("godot-rect2",            tg_native_godot_rect2,            nullptr);
+    turi_register_default_native_typed("godot-rect2-x",          tg_native_godot_rect2_x,          nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-rect2-y",          tg_native_godot_rect2_y,          nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-rect2-w",          tg_native_godot_rect2_w,          nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-rect2-h",          tg_native_godot_rect2_h,          nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native      ("godot-xform2d-origin",   tg_native_godot_xform2d_origin,   nullptr);  // vec2 handle
+    turi_register_default_native_typed("godot-xform2d-rotation", tg_native_godot_xform2d_rotation, nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native      ("godot-xform3d-origin",   tg_native_godot_xform3d_origin,   nullptr);  // vec3 handle
+    turi_register_default_native      ("godot-array-len",        tg_native_godot_array_len,        nullptr);  // :int length
+    turi_register_default_native      ("godot-array-get",        tg_native_godot_array_get,        nullptr);  // dynamic
+    turi_register_default_native_typed("godot-dict-has",         tg_native_godot_dict_has,         nullptr, TUR_NRT_BOOL);
+    turi_register_default_native      ("godot-dict-get",         tg_native_godot_dict_get,         nullptr);  // dynamic
 }
 
 void TurmericLanguage::shutdown_turi() {
