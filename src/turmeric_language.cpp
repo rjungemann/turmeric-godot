@@ -513,6 +513,12 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native_typed("godot-println",   tg_native_println,      nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-export",    tg_native_export,       nullptr, TUR_NRT_VOID);
     turi_register_default_native      ("godot-prop-get",  tg_native_prop_get,     nullptr);                  // dynamic
+    // Typed aliases over the same C dispatch -- callers pick by property
+    // type (float / int / bool) and the elaborator sees the right return
+    // type for arithmetic / branching at the use site.
+    turi_register_default_native_typed("godot-prop-get-f", tg_native_prop_get,    nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-prop-get-i", tg_native_prop_get,    nullptr, TUR_NRT_INT);
+    turi_register_default_native_typed("godot-prop-get-b", tg_native_prop_get,    nullptr, TUR_NRT_BOOL);
     turi_register_default_native_typed("godot-prop-set",  tg_native_prop_set,     nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-signal",    tg_native_signal,       nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("emit-signal",     tg_native_emit_signal,  nullptr, TUR_NRT_VOID);

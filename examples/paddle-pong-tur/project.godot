@@ -1,0 +1,16 @@
+; G5 paddle-pong-tur demo project. A real gameplay loop driven entirely
+; by Turmeric scripts (scripts/ball.tur + scripts/paddle.tur); the
+; bundled pong_driver.gd is a headless test harness that asserts the
+; ball bounces off the bottom wall and the simulated-input paddles
+; move.
+;
+; Run headless:
+;   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . \
+;     --script scripts/pong_driver.gd
+
+config_version=5
+
+[application]
+
+config/name="turmeric-godot paddle-pong"
+config/features=PackedStringArray("4.3", "Forward Plus")

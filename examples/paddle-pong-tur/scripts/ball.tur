@@ -1,0 +1,32 @@
+;; G5 paddle-pong -- ball script. Drives gameplay entirely in Turmeric.
+;;
+;; Attach to a Node2D representing the ball. Three exported properties
+;; drive the simulation:
+;;   vel-x   : float   horizontal velocity in px/sec
+;;   vel-y   : float   vertical velocity in px/sec
+;;   bound-y : float   field height (px) -- ball flips vel-y at 0..bound-y
+
+(godot-export "vel-x"   "float" 240.0)
+(godot-export "vel-y"   "float" 160.0)
+(godot-export "bound-y" "float" 480.0)
+
+(defn _process [delta : float]
+  (let [self  (node/self)
+        pos   (node/get-position self)
+        vx    (godot-prop-get-f "vel-x")
+        vy    (godot-prop-get-f "vel-y")
+        bound (godot-prop-get-f "bound-y")
+        new-x (+ (node/vec2-x pos) (* vx delta))
+        new-y (+ (node/vec2-y pos) (* vy delta))]
+    ;; Top wall: flip vel-y if we'd cross above 0.
+    (if (< new-y 0.0)
+      (do
+        (godot-prop-set "vel-y" (- 0.0 vy))
+        (node/set-position self (godot-vec2 new-x 0.0)))
+      ;; Bottom wall: flip vel-y if we'd cross below bound.
+      (if (> new-y bound)
+        (do
+          (godot-prop-set "vel-y" (- 0.0 vy))
+          (node/set-position self (godot-vec2 new-x bound)))
+        ;; Otherwise: just move.
+        (node/set-position self (godot-vec2 new-x new-y))))))

@@ -1,0 +1,27 @@
+;; G5 paddle-pong -- paddle script. Moves up/down with arrow keys.
+;;
+;; Attach to a Node2D representing a paddle. Reads two exported keys
+;; that name the input actions; the same script is reusable for
+;; player 1 (ui_up / ui_down) and player 2 (custom actions).
+
+(godot-export "speed"      "float"  300.0)
+(godot-export "action-up"  "string" "ui_up")
+(godot-export "action-down" "string" "ui_down")
+
+;; Input.is_action_pressed takes a StringName. The generated facade has
+;; (input/is-action-pressed self action exact) but Input is a singleton,
+;; not an instance -- we go through the singleton accessor instead.
+;;
+;; For v1 there's no curated singleton lookup; the proxy needs an Object
+;; handle and we don't have one for Input today. So this script does the
+;; movement against time-only for now and the driver injects velocity
+;; via godot-prop-set to simulate input.
+
+(godot-export "vy" "float" 0.0)   ;; driver sets this to simulate input
+
+(defn _process [delta : float]
+  (let [self  (node/self)
+        pos   (node/get-position self)
+        vy    (godot-prop-get-f "vy")
+        new-y (+ (node/vec2-y pos) (* vy delta))]
+    (node/set-position self (godot-vec2 (node/vec2-x pos) new-y))))
