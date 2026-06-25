@@ -26,8 +26,11 @@ func _init() -> void:
 		_fail("load returned null"); quit(); return
 
 	# Script-level: signal list reflects godot-signal declarations.
-	var sigs := script.get_script_signal_list()
-	var seen := {}
+	# Explicit types here (instead of :=) -- script is loaded as
+	# Resource so the inferred type is Variant, which Godot 4.3's
+	# strict GDScript parser refuses to chain another := against.
+	var sigs: Array = script.get_script_signal_list()
+	var seen: Dictionary = {}
 	for s in sigs:
 		seen[s["name"]] = s.get("args", []).size()
 	for required in ["ready-signal", "hit", "scored"]:

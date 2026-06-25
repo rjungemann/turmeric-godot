@@ -1,0 +1,13 @@
+;; Demonstrates (godot-prop-get-c) -- the typed cstr variant for
+;; string-typed inspector exports. Before this native, string props
+;; couldn't be read from script (the dynamic prop-get printed a
+;; "string properties cannot be read" warning and returned nil).
+
+(godot-export "label-prefix" "string" "<prefix>")
+
+(defn _ready []
+  (let [self   (node/self)
+        prefix (godot-prop-get-c "label-prefix")]
+    ;; Round-trip the prefix back through set_name so the GD driver can
+    ;; assert it landed -- proves cstr arrived intact.
+    (godot-call-v self "set_name" prefix)))

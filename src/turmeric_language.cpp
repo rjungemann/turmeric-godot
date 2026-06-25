@@ -343,6 +343,39 @@ static TuriValue tg_variant_to_turi(const Variant &v) {
     }
 }
 
+// String-aware prop-get: same lookup as tg_native_prop_get, but the
+// STRING case routes through the per-frame string arena so the cstr
+// outlives the call. Registered as godot-prop-get-c (TUR_NRT_CSTR);
+// caller picks this variant when reading a string-typed export.
+static TuriValue tg_native_prop_get_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1 || args[0].tag != TURI_CSTR || !args[0].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-prop-get-c) expected 1 cstr arg (name)");
+        return turi_cstr(string_arena_push("", 0));
+    }
+    TurmericInstance *self = g_current_instance;
+    if (!self || !self->script) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-prop-get-c) called outside an instance method");
+        return turi_cstr(string_arena_push("", 0));
+    }
+    StringName name(args[0].as_cstr);
+    const ExportDecl *d = self->script->find_export(name);
+    if (!d) {
+        UtilityFunctions::printerr(String("turmeric-godot: (godot-prop-get-c) undeclared property: ") +
+                                   String(args[0].as_cstr));
+        return turi_cstr(string_arena_push("", 0));
+    }
+    std::string key = args[0].as_cstr;
+    auto it = self->property_values.find(key);
+    const Variant v = (it != self->property_values.end()) ? it->second : d->default_value;
+    if (v.get_type() == Variant::STRING || v.get_type() == Variant::STRING_NAME) {
+        String s = v;
+        CharString cs = s.utf8();
+        return turi_cstr(string_arena_push(cs.get_data(), (size_t)cs.length()));
+    }
+    return turi_cstr(string_arena_push("", 0));
+}
+
 // (godot-prop-get NAME) -- read a declared export on the current instance.
 // Falls back to the script-level default if the inspector has not assigned.
 static TuriValue tg_native_prop_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
@@ -557,6 +590,7 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native_typed("godot-prop-get-f", tg_native_prop_get,    nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-prop-get-i", tg_native_prop_get,    nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-prop-get-b", tg_native_prop_get,    nullptr, TUR_NRT_BOOL);
+    turi_register_default_native_typed("godot-prop-get-c", tg_native_prop_get_c,  nullptr, TUR_NRT_CSTR);
     turi_register_default_native_typed("godot-prop-set",  tg_native_prop_set,     nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-signal",    tg_native_signal,       nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("emit-signal",     tg_native_emit_signal,  nullptr, TUR_NRT_VOID);
