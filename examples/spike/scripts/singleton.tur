@@ -1,0 +1,10 @@
+;; Smoke test for (godot-singleton) -- proves the engine-singleton path
+;; works end-to-end. Headless tests can't simulate real input, so the
+;; assertion is just "the call doesn't error and returns :bool false
+;; with no input pressed".
+
+(defn _ready []
+  (let [pressed (input/is-action-pressed? "ui_up")]
+    (if pressed
+      (godot-println "[singleton] ui_up reported pressed (unexpected headless)")
+      (godot-println "[singleton] ui_up false as expected; singleton call OK"))))

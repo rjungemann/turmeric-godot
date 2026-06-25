@@ -525,6 +525,7 @@ void TurmericLanguage::init_turi() {
 
     // G3.a -- generic ClassDB proxy + Variant arena.
     turi_register_default_native      ("godot-self",       tg_native_godot_self,    nullptr);                // :int Object handle
+    turi_register_default_native      ("godot-singleton",  tg_native_godot_singleton, nullptr);              // :int Object handle
     turi_register_default_native      ("godot-call",       tg_native_godot_call,    nullptr);                // dynamic
     // Codegen v2 typed variants -- gen_godot_facade.py picks the right one
     // per JSON return type so the generated wrapper declares an honest type.

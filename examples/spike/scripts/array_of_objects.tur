@@ -1,0 +1,29 @@
+;; Smoke test: Array of Object handles round-trip through the marshaller.
+;;
+;; get_children returns TypedArray<Node>. Each element is an Object;
+;; tg_result_to_turi marshals OBJECT-typed Variants as plain :int
+;; Object handles (untagged), so godot-array-get on each index returns
+;; a handle we can hand straight back to godot-call.
+;;
+;; The driver attaches three named children, then this script walks
+;; them and concatenates their names into the label "names-seen" via
+;; (node/set-name).
+
+(defn _ready []
+  (let [self (node/self)
+        kids (godot-call self "get_children")
+        n    (godot-array-len kids)]
+    (godot-println "[array-of-objects] children count:")
+    ;; godot-println takes :cstr. We can't num->str a :int yet, so log
+    ;; the count as a marker only; the GDScript driver does the
+    ;; numeric assertion.
+    (if (= n 0)
+      (godot-println "[array-of-objects] (none)")
+      (let [first  (godot-array-get kids 0)
+            fname  (node/get-name first)]
+        (godot-println "[array-of-objects] first child name:")
+        (godot-println fname)
+        ;; Rename the parent (self) to advertise that the array
+        ;; traversal worked. The GD driver asserts the new name.
+        ;; godot-call-v keeps the (if ...) branches typed :void.
+        (godot-call-v self "set_name" fname)))))

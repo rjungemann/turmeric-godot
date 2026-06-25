@@ -26,7 +26,8 @@ func _approx(a: float, b: float, eps: float = 0.01) -> bool:
 func _init() -> void:
 	var ball_script := load("res://scripts/ball.tur")
 	var paddle_script := load("res://scripts/paddle.tur")
-	if ball_script == null or paddle_script == null:
+	var score_script := load("res://scripts/score.tur")
+	if ball_script == null or paddle_script == null or score_script == null:
 		_fail("script load returned null"); quit(); return
 
 	# Ball: position (100, 240); pre-set vel-x=120, vel-y=240 (moves
@@ -52,6 +53,14 @@ func _init() -> void:
 	p2.name = "P2"; p2.set_script(paddle_script); p2.position = Vector2(620, 240)
 	p2.set("vy", 200.0)
 	root.add_child(p2)
+
+	# Label sibling of Ball -- score.tur reads ../Ball each frame.
+	var label := Label.new()
+	label.name = "Score"
+	label.set_script(score_script)
+	label.set("midpoint", 320.0)
+	label.text = "init"
+	root.add_child(label)
 
 	# Let one frame fire _ready + register exports; subsequent frames
 	# drive _process.
@@ -85,12 +94,18 @@ func _init() -> void:
 	if p2.position.y <= 240.0:
 		_fail("P2 did not move down; y=%s" % str(p2.position.y))
 
+	# Label was updated by score.tur via (label/set-text ...).
+	# Ball starts at x=100 (left of midpoint=320) and ends ~277 after
+	# the run -- still left of midpoint, so the label should say so.
+	if label.text != "ball on left half":
+		_fail("Label not updated; text=%s" % str(label.text))
+
 	if fail_count == 0:
 		print("[pong] all assertions passed: ball=%s vy=%.2f  p1.y=%.2f  p2.y=%.2f" %
 			[str(ball.position), vy_now, p1.position.y, p2.position.y])
 	else:
 		printerr("[pong] %d FAILURES" % fail_count)
 
-	for n in [ball, p1, p2]:
+	for n in [ball, p1, p2, label]:
 		n.queue_free()
 	quit(0 if fail_count == 0 else 1)

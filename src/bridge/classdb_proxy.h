@@ -11,6 +11,12 @@ namespace godot {
 // (godot-self) -> :int handle to the current TurmericInstance's Godot owner.
 TuriValue tg_native_godot_self(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// (godot-singleton "Name") -> :int Object handle to the named engine
+// singleton (Input, Engine, OS, RenderingServer, ...). Returns 0 for
+// an unknown singleton. Pair with godot-call to invoke methods on it:
+//   (godot-call (godot-singleton "Input") "is_action_pressed" "ui_up")
+TuriValue tg_native_godot_singleton(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 // (godot-call OBJ METHOD args...) -> primitive or arena-handle result.
 //
 // OBJ: :int Object handle (from godot-self).

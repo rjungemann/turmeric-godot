@@ -2,6 +2,7 @@
 #include "variant_marshal.h"
 #include "../turmeric_instance.h"
 
+#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -22,6 +23,25 @@
 namespace godot {
 
 // --- Self -------------------------------------------------------------------
+
+TuriValue tg_native_godot_singleton(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1 || args[0].tag != TURI_CSTR || !args[0].as_cstr) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-singleton NAME) expects a single :cstr arg");
+        return turi_int(0);
+    }
+    Engine *eng = Engine::get_singleton();
+    if (!eng) return turi_int(0);
+    Object *sing = eng->get_singleton(StringName(args[0].as_cstr));
+    if (!sing) {
+        UtilityFunctions::printerr(
+            String("turmeric-godot: (godot-singleton) no singleton named '") +
+            String(args[0].as_cstr) + String("'"));
+        return turi_int(0);
+    }
+    return turi_int((int64_t)(intptr_t)sing);
+}
 
 TuriValue tg_native_godot_self(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
     (void)env; (void)args; (void)ud;

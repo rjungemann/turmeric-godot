@@ -43,6 +43,18 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; --- Self -------------------------------------------------------------------
 (defn node/self [] : int (godot-self))
 
+;; --- Engine singletons -----------------------------------------------------
+;; (singleton "Input") -> :int Object handle. Pair with godot-call (or
+;; the generated input/... wrappers) to invoke methods on it.
+(defn singleton [name : cstr] : int (godot-singleton name))
+
+;; Convenience: Input is the most-touched singleton in gameplay code.
+(defn input [] : int (godot-singleton "Input"))
+(defn input/is-action-pressed? [action : cstr] : bool
+  (godot-call-b (godot-singleton "Input") "is_action_pressed" action))
+(defn input/is-action-just-pressed? [action : cstr] : bool
+  (godot-call-b (godot-singleton "Input") "is_action_just_pressed" action))
+
 ;; --- Node2D position / scale -- pos is an arena vec2 handle ----------------
 (defn node/set-position [self : int pos : int]
   (godot-call self "set_position" pos))

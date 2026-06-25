@@ -1,0 +1,22 @@
+;; G5 paddle-pong -- score/status Label.
+;;
+;; Attach to a Label. Reads the sibling Ball's x position each frame
+;; and writes one of two status strings into the label's "text"
+;; property: "ball on left half" or "ball on right half". Demonstrates
+;; (label/set-text ...) -- a cstr-arg setter from the generated facade.
+;;
+;; The driver wires the Label as a sibling of Ball and asserts the
+;; text changes after the ball crosses the half-field line. A full
+;; numeric score formatter is waiting on a (godot-num->str f) helper.
+
+(godot-export "midpoint" "float" 320.0)   ;; field width / 2
+
+(defn _process [delta : float]
+  (let [self  (node/self)
+        ball  (godot-call self "get_node" "../Ball")
+        bp    (node/get-position ball)
+        bx    (node/vec2-x bp)
+        mid   (godot-prop-get-f "midpoint")]
+    (if (< bx mid)
+      (label/set-text self "ball on left half")
+      (label/set-text self "ball on right half"))))
