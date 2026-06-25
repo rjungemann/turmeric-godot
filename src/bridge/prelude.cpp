@@ -65,6 +65,14 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 (defn node/queue-free [self : int]
   (godot-call self "queue_free"))
 
+;; Honest :cstr-returning wrappers via godot-call-c. The cstr is valid
+;; for the rest of the current outer cb_call frame (string arena
+;; lifetime); copy if you need to outlive the method.
+(defn node/get-name [self : int] : cstr
+  (godot-call-c self "get_name"))
+(defn node/get-class [self : int] : cstr
+  (godot-call-c self "get_class"))
+
 ;; --- Dictionary helpers -- godot-dict-has now returns :bool, so the
 ;;     usual (if (dict-has? d k) ...) idiom works directly. ------------------
 (defn dict-has? [d : int key : cstr] : bool (godot-dict-has d key))

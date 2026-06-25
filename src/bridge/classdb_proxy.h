@@ -30,6 +30,7 @@ TuriValue tg_native_godot_call(TuriEnv *env, TuriValue *args, uint32_t n, void *
 TuriValue tg_native_godot_call_v(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_call_f(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_call_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_call_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
 // (godot-vec2 x y) -> :int arena handle wrapping Vector2(x, y).
 TuriValue tg_native_godot_vec2(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);

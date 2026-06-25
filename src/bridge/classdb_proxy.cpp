@@ -194,6 +194,23 @@ TuriValue tg_native_godot_call_b(TuriEnv *env, TuriValue *args, uint32_t n, void
     return turi_bool((bool)result);
 }
 
+TuriValue tg_native_godot_call_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    bool ok = false;
+    Variant result = tg_call_dispatch(args, n, &ok);
+    if (!ok) return turi_cstr(string_arena_push("", 0));
+    // STRING / STRING_NAME / NODE_PATH all stringify via the same path the
+    // dynamic marshaller uses in tg_result_to_turi. Anything else gets an
+    // empty cstr so the caller still sees a valid (possibly empty) string.
+    const Variant::Type t = result.get_type();
+    if (t == Variant::STRING || t == Variant::STRING_NAME || t == Variant::NODE_PATH) {
+        String s = result;
+        CharString cs = s.utf8();
+        return turi_cstr(string_arena_push(cs.get_data(), (size_t)cs.length()));
+    }
+    return turi_cstr(string_arena_push("", 0));
+}
+
 // --- Vector builders --------------------------------------------------------
 
 static bool tg_arg_as_double(TuriValue v, double *out) {

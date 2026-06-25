@@ -12,7 +12,7 @@
 
     ;; Codegen v2: void wrappers via godot-call-v.
     (node2d/set-skew self 0.1)
-    (node2d/set-scale self (godot-vec2 2.0 0.5))
+    (node/set-scale self (godot-vec2 2.0 0.5))
 
     ;; Codegen v2: honest :float-returning wrapper via godot-call-f.
     ;; The let-binding types `skew` as :float so the curly-infix arithmetic

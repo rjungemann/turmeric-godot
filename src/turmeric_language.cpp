@@ -525,6 +525,7 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native_typed("godot-call-v",     tg_native_godot_call_v,  nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-call-f",     tg_native_godot_call_f,  nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-call-b",     tg_native_godot_call_b,  nullptr, TUR_NRT_BOOL);
+    turi_register_default_native_typed("godot-call-c",     tg_native_godot_call_c,  nullptr, TUR_NRT_CSTR);
     turi_register_default_native      ("godot-vec2",       tg_native_godot_vec2,    nullptr);                // :int arena handle
     turi_register_default_native      ("godot-vec3",       tg_native_godot_vec3,    nullptr);
     turi_register_default_native_typed("godot-vec2-x",     tg_native_godot_vec2_x,  nullptr, TUR_NRT_FLOAT);

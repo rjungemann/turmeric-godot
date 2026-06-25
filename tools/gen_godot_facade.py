@@ -66,7 +66,8 @@ ALLOWLIST = sorted([
 # We skip these to avoid two competing definitions of the same name.
 PRELUDE_NODE_METHODS = {
     "set_position", "get_position", "set_modulate", "get_modulate",
-    "get_node", "queue_free",
+    "set_scale", "get_node", "queue_free",
+    "get_name", "get_class",
 }
 
 
@@ -155,27 +156,29 @@ def gen_wrapper(class_name: str, method: dict) -> str | None:
 
     # Codegen v2: pick a typed godot-call variant per JSON return type so
     # the wrapper carries an honest signature the elaborator can check.
-    #   void   -> godot-call-v (no return annotation, runtime returns nil)
-    #   float  -> godot-call-f : float
-    #   bool   -> godot-call-b : bool
-    #   other  -> godot-call  : int (handles, strings, aggregates, Object,
-    #                                Variant -- all flow as :int handles
-    #                                or primitives recognized at the use
-    #                                site)
+    #   void                              -> godot-call-v (no return annotation)
+    #   float                             -> godot-call-f : float
+    #   bool                              -> godot-call-b : bool
+    #   String / StringName / NodePath    -> godot-call-c : cstr
+    #   other                             -> godot-call  : int (handles,
+    #                                                aggregates, Object,
+    #                                                Variant -- arena
+    #                                                handles or primitives
+    #                                                recognized at the use
+    #                                                site)
     if "return_value" not in method:
         call_native = "godot-call-v"
         ret_anno    = ""
     else:
         rt = method["return_value"].get("type", "")
         if rt == "float":
-            call_native = "godot-call-f"
-            ret_anno    = " : float"
+            call_native, ret_anno = "godot-call-f", " : float"
         elif rt == "bool":
-            call_native = "godot-call-b"
-            ret_anno    = " : bool"
+            call_native, ret_anno = "godot-call-b", " : bool"
+        elif rt in ("String", "StringName", "NodePath"):
+            call_native, ret_anno = "godot-call-c", " : cstr"
         else:
-            call_native = "godot-call"
-            ret_anno    = " : int"
+            call_native, ret_anno = "godot-call", " : int"
 
     params_src    = " ".join(param_list)
     call_args_src = " ".join(call_args)
