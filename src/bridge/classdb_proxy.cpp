@@ -116,27 +116,30 @@ static TuriValue tg_result_to_turi(const Variant &v) {
     }
 }
 
-TuriValue tg_native_godot_call(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
-    (void)env; (void)ud;
+// Shared dispatch core. Returns the raw Variant; the caller marshals to
+// the right TuriValue tag. Returns a NIL Variant + sets *ok=false on
+// argument-shape errors.
+static Variant tg_call_dispatch(TuriValue *args, uint32_t n, bool *ok) {
+    *ok = false;
     if (n < 2) {
         UtilityFunctions::printerr(
             "turmeric-godot: (godot-call OBJ METHOD args...) needs at least OBJ and METHOD");
-        return turi_nil();
+        return Variant();
     }
     if (args[0].tag != TURI_INT || variant_arena_is_handle(args[0].as_int)) {
         UtilityFunctions::printerr(
             "turmeric-godot: (godot-call) OBJ must be an :int Object handle (see godot-self)");
-        return turi_nil();
+        return Variant();
     }
     if (args[1].tag != TURI_CSTR || !args[1].as_cstr) {
         UtilityFunctions::printerr(
             "turmeric-godot: (godot-call) METHOD must be a :cstr");
-        return turi_nil();
+        return Variant();
     }
     Object *obj = (Object *)(intptr_t)args[0].as_int;
     if (!obj) {
         UtilityFunctions::printerr("turmeric-godot: (godot-call) OBJ is a null handle");
-        return turi_nil();
+        return Variant();
     }
     StringName method(args[1].as_cstr);
 
@@ -145,9 +148,50 @@ TuriValue tg_native_godot_call(TuriEnv *env, TuriValue *args, uint32_t n, void *
     for (uint32_t i = 0; i < marshal_count; i++) {
         call_args.push_back(tg_arg_to_variant(args[2 + i], args[1].as_cstr, i));
     }
+    *ok = true;
+    return obj->callv(method, call_args);
+}
 
-    Variant result = obj->callv(method, call_args);
+TuriValue tg_native_godot_call(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    bool ok = false;
+    Variant result = tg_call_dispatch(args, n, &ok);
+    if (!ok) return turi_nil();
     return tg_result_to_turi(result);
+}
+
+// Typed variants -- Codegen v2 picks the right one per JSON return type so
+// the generated wrapper can declare an honest return type. Each variant is
+// registered with turi_register_default_native_typed; the runtime behavior
+// is otherwise the same as godot-call except for the post-call coercion.
+
+TuriValue tg_native_godot_call_v(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    bool ok = false;
+    (void)tg_call_dispatch(args, n, &ok);
+    // void: discard the result regardless of what the method returned.
+    return turi_nil();
+}
+
+TuriValue tg_native_godot_call_f(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    bool ok = false;
+    Variant result = tg_call_dispatch(args, n, &ok);
+    if (!ok) return turi_float(0.0);
+    // Coerce: if Godot returned an int (some methods declared float in the
+    // JSON actually return integral values), widen it. Same logic as the
+    // existing primitive marshaller for FLOAT.
+    if (result.get_type() == Variant::FLOAT) return turi_float((double)result);
+    if (result.get_type() == Variant::INT)   return turi_float((double)(int64_t)result);
+    return turi_float(0.0);
+}
+
+TuriValue tg_native_godot_call_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    bool ok = false;
+    Variant result = tg_call_dispatch(args, n, &ok);
+    if (!ok) return turi_bool(false);
+    return turi_bool((bool)result);
 }
 
 // --- Vector builders --------------------------------------------------------

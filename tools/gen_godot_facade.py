@@ -144,7 +144,6 @@ def gen_wrapper(class_name: str, method: dict) -> str | None:
     cls = class_prefix(class_name)
     wrap = f"{cls}/{kebab(mname)}"
     args = method.get("arguments", [])
-    has_return = "return_value" in method
 
     param_list = ["self : int"]
     call_args = []
@@ -154,14 +153,35 @@ def gen_wrapper(class_name: str, method: dict) -> str | None:
         param_list.append(f"{n} : {t.lstrip(':')}")
         call_args.append(n)
 
-    params_src = " ".join(param_list)
-    call_args_src = " ".join(call_args)
-    ret_anno = " : int" if has_return else ""
-
-    if call_args_src:
-        body = f'(godot-call self "{mname}" {call_args_src})'
+    # Codegen v2: pick a typed godot-call variant per JSON return type so
+    # the wrapper carries an honest signature the elaborator can check.
+    #   void   -> godot-call-v (no return annotation, runtime returns nil)
+    #   float  -> godot-call-f : float
+    #   bool   -> godot-call-b : bool
+    #   other  -> godot-call  : int (handles, strings, aggregates, Object,
+    #                                Variant -- all flow as :int handles
+    #                                or primitives recognized at the use
+    #                                site)
+    if "return_value" not in method:
+        call_native = "godot-call-v"
+        ret_anno    = ""
     else:
-        body = f'(godot-call self "{mname}")'
+        rt = method["return_value"].get("type", "")
+        if rt == "float":
+            call_native = "godot-call-f"
+            ret_anno    = " : float"
+        elif rt == "bool":
+            call_native = "godot-call-b"
+            ret_anno    = " : bool"
+        else:
+            call_native = "godot-call"
+            ret_anno    = " : int"
+
+    params_src    = " ".join(param_list)
+    call_args_src = " ".join(call_args)
+    body = (f'({call_native} self "{mname}" {call_args_src})'
+            if call_args_src
+            else f'({call_native} self "{mname}")')
 
     return f"(defn {wrap} [{params_src}]{ret_anno}\n  {body})"
 

@@ -520,6 +520,11 @@ void TurmericLanguage::init_turi() {
     // G3.a -- generic ClassDB proxy + Variant arena.
     turi_register_default_native      ("godot-self",       tg_native_godot_self,    nullptr);                // :int Object handle
     turi_register_default_native      ("godot-call",       tg_native_godot_call,    nullptr);                // dynamic
+    // Codegen v2 typed variants -- gen_godot_facade.py picks the right one
+    // per JSON return type so the generated wrapper declares an honest type.
+    turi_register_default_native_typed("godot-call-v",     tg_native_godot_call_v,  nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("godot-call-f",     tg_native_godot_call_f,  nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-call-b",     tg_native_godot_call_b,  nullptr, TUR_NRT_BOOL);
     turi_register_default_native      ("godot-vec2",       tg_native_godot_vec2,    nullptr);                // :int arena handle
     turi_register_default_native      ("godot-vec3",       tg_native_godot_vec3,    nullptr);
     turi_register_default_native_typed("godot-vec2-x",     tg_native_godot_vec2_x,  nullptr, TUR_NRT_FLOAT);

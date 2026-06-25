@@ -23,6 +23,14 @@ TuriValue tg_native_godot_self(TuriEnv *env, TuriValue *args, uint32_t n, void *
 // are added).
 TuriValue tg_native_godot_call(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// Typed variants -- same dispatch, registered with a fixed return-type
+// signature so generated wrappers can declare honest return types.
+// godot-call-v ignores the result (void); godot-call-f forces float;
+// godot-call-b forces bool.
+TuriValue tg_native_godot_call_v(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_call_f(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_call_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 // (godot-vec2 x y) -> :int arena handle wrapping Vector2(x, y).
 TuriValue tg_native_godot_vec2(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
