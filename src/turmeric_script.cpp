@@ -19,14 +19,42 @@ static TurmericLanguage *get_lang() {
     return TurmericLanguage::singleton();
 }
 
+// Per-env diagnostic sink: attribute libturi diagnostics to this script in
+// Godot's error panel instead of letting them go to global stderr.
+static void script_diag_sink(TuriEnv * /*env*/, int level, const char *code,
+                             const char *file, uint32_t line,
+                             uint32_t /*col_start*/, uint32_t /*col_end*/,
+                             const char *message, void *ud) {
+    String script_path = ud ? *reinterpret_cast<const String *>(ud) : String("<unknown>");
+    String prefix = String("[turmeric ") + script_path +
+                    (file ? (String(":") + String(file) + ":" + String::num_int64(line)) : String("")) +
+                    String(code ? (String(" ") + String(code)) : String("")) +
+                    String("] ");
+    String full = prefix + String(message ? message : "");
+    if (level >= 2) {
+        UtilityFunctions::printerr(full);
+    } else {
+        UtilityFunctions::print(full);
+    }
+}
+
 TurmericScript::TurmericScript() {
     std::fprintf(stdout, "[turmeric-godot] TurmericScript::ctor\n");
     std::fflush(stdout);
+    // Per-script env (libturi-per-embed-env-and-peripherals, Gap 1 fix):
+    // turi_env_new pulls in any natives registered with
+    // turi_register_default_native -- godot-println is one of them, seeded
+    // by TurmericLanguage at init.
+    turi_env = turi_env_new();
 }
 
 TurmericScript::~TurmericScript() {
     std::fprintf(stdout, "[turmeric-godot] TurmericScript::dtor\n");
     std::fflush(stdout);
+    if (turi_env) {
+        turi_env_free(turi_env);
+        turi_env = nullptr;
+    }
 }
 
 // --- Source ---
@@ -46,10 +74,30 @@ Error TurmericScript::_reload(bool p_keep_state) {
                  (long long)source_code.length());
     std::fflush(stdout);
 
-    TurmericLanguage *lang = get_lang();
-    if (!lang || !lang->get_turi_env()) {
-        UtilityFunctions::printerr("turmeric-godot: language singleton not available");
+    if (!turi_env) {
+        UtilityFunctions::printerr("turmeric-godot: script has no TuriEnv");
         return ERR_UNAVAILABLE;
+    }
+
+    // Gap 2 fix: reset between reloads instead of destroy + recreate. Drops
+    // every defn from the prior source but keeps the natives the env was
+    // born with.
+    turi_env_reset(turi_env);
+
+    // Gap 3 fix: route this env's diagnostics through our sink so they
+    // surface in Godot's Output panel attributed to this script.
+    static thread_local String s_path_buf;  // sink reads via pointer
+    s_path_buf = get_path();
+    if (s_path_buf.is_empty()) s_path_buf = String("<inline>");
+    turi_env_set_diag_sink(turi_env, script_diag_sink, &s_path_buf);
+
+    // Gap 4 fix: resolve (import ...) relative to the script's own directory.
+    if (!get_path().is_empty()) {
+        String dir = get_path().get_base_dir();
+        if (!dir.is_empty()) {
+            CharString dir_cs = dir.utf8();
+            turi_env_set_module_base_dir(turi_env, dir_cs.get_data());
+        }
     }
 
     if (source_code.is_empty()) {
@@ -58,8 +106,10 @@ Error TurmericScript::_reload(bool p_keep_state) {
     }
 
     CharString src_utf8 = source_code.utf8();
-    TuriValue v = turi_eval(lang->get_turi_env(), src_utf8.get_data());
+    TuriValue v = turi_eval(turi_env, src_utf8.get_data());
     if (v.tag == TURI_ERROR) {
+        // The diag sink already surfaced the structured diagnostic; this
+        // line is the eval-level summary.
         UtilityFunctions::printerr(String("turmeric-godot: eval failed: ") +
                                    (v.as_error ? v.as_error : "<unknown>"));
         loaded = false;

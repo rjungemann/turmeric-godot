@@ -8,6 +8,8 @@
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 
+struct TuriEnv;
+
 namespace godot {
 
 // G1: a TurmericScript holds the source code of one `.tur` file and, on
@@ -46,13 +48,17 @@ public:
     bool _has_script_signal(const StringName &p_signal) const override;
     void _update_exports() override;
 
-    // --- Instance creation (G1: stub — returns null) ---
+    // --- Instance creation ---
     void *_instance_create(Object *p_for_object) const override;
     void *_placeholder_instance_create(Object *p_for_object) const override;
 
+    // --- Access for TurmericInstance dispatch ---
+    TuriEnv *get_turi_env() const { return turi_env; }
+
 private:
-    String source_code;
-    bool   loaded = false;
+    String   source_code;
+    bool     loaded   = false;
+    TuriEnv *turi_env = nullptr;
 };
 
 } // namespace godot

@@ -72,12 +72,7 @@ static Variant turi_to_variant(TuriValue v) {
 // --- Dispatch helpers --------------------------------------------------------
 
 static TuriEnv *instance_env(TurmericInstance *self) {
-    (void)self;
-    // G1: one shared env across all scripts. See
-    // turmeric/docs/reported/libturi-per-embed-env-and-peripherals.md
-    // for the per-script-env story this is deferring.
-    TurmericLanguage *lang = TurmericLanguage::singleton();
-    return lang ? lang->get_turi_env() : nullptr;
+    return (self && self->script) ? self->script->get_turi_env() : nullptr;
 }
 
 static TuriValue lookup_method(TurmericInstance *self, const char *name) {

@@ -98,29 +98,30 @@ PackedStringArray TurmericLanguage::_get_string_delimiters() const {
 
 void TurmericLanguage::init_turi() {
     turi_init(false);
-    turi_env = turi_env_new();
-    turi_env_register_native(turi_env, "godot-println", tg_native_println, nullptr);
+    // Gap 1 fix: register host natives as process-global defaults. Every
+    // TurmericScript's TuriEnv (created in TurmericScript::ctor) auto-binds
+    // these at turi_env_new time -- no per-env re-registration boilerplate.
+    turi_register_default_native("godot-println", tg_native_println, nullptr);
 }
 
 void TurmericLanguage::shutdown_turi() {
-    if (turi_env) {
-        turi_env_free(turi_env);
-        turi_env = nullptr;
-    }
+    turi_clear_default_natives();
 }
 
 void TurmericLanguage::smoke_test() {
-    // Arithmetic round-trip (env-typed).
+    // Stand up a throwaway env so the smoke test is independent of any script.
+    TuriEnv *env = turi_env_new();
     char type_tag[64] = {0};
-    TuriValue v = turi_eval_typed(turi_env, "(+ 1 2)", type_tag, sizeof(type_tag));
+    TuriValue v = turi_eval_typed(env, "(+ 1 2)", type_tag, sizeof(type_tag));
     char repr[128] = {0};
     turi_value_repr(repr, sizeof(repr), v);
     std::fprintf(stdout, "[turmeric-godot] libturi smoke: (+ 1 2) = %s : %s\n",
                  repr, type_tag);
     std::fflush(stdout);
 
-    // godot/println round-trip: calls back into Godot via UtilityFunctions::print.
-    (void)turi_eval(turi_env, "(godot-println \"hello from turmeric (via native)\")");
+    // godot-println round-trip via the default-native registry.
+    (void)turi_eval(env, "(godot-println \"hello from turmeric (via native)\")");
+    turi_env_free(env);
 }
 
 void TurmericLanguage::_init() {

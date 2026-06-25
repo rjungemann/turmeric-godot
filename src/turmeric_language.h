@@ -26,16 +26,10 @@ public:
     TurmericLanguage();
     ~TurmericLanguage();
 
-    // The shared interpreter environment. For G1 this is a single env shared
-    // across all scripts; a per-script env comes in the follow-up slice.
-    TuriEnv *get_turi_env() const { return turi_env; }
-
     // Process-wide singleton, set by initialize_turmeric_godot_module.
     static TurmericLanguage *singleton();
 
 private:
-    TuriEnv *turi_env = nullptr;
-
     void init_turi();
     void shutdown_turi();
     void smoke_test();
