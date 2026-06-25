@@ -1,4 +1,5 @@
 #include "turmeric_script.h"
+#include "turmeric_instance.h"
 #include "turmeric_language.h"
 
 #include <godot_cpp/classes/engine.hpp>
@@ -74,7 +75,7 @@ ScriptLanguage *TurmericScript::_get_language() const { return get_lang(); }
 
 bool TurmericScript::_is_valid() const { return loaded; }
 bool TurmericScript::_is_tool() const { return false; }
-bool TurmericScript::_can_instantiate() const { return false; } // G1: instance dispatch not yet
+bool TurmericScript::_can_instantiate() const { return loaded; }
 StringName TurmericScript::_get_instance_base_type() const { return StringName("Object"); }
 Ref<Script> TurmericScript::_get_base_script() const { return Ref<Script>(); }
 bool TurmericScript::_inherits_script(const Ref<Script> &p_script) const {
@@ -95,12 +96,7 @@ void TurmericScript::_update_exports() {}
 // --- Instance creation: G1 stub ---
 
 void *TurmericScript::_instance_create(Object *p_for_object) const {
-    (void)p_for_object;
-    UtilityFunctions::printerr(
-        "turmeric-godot: per-node instance dispatch is not implemented yet "
-        "(G1 next slice). Script source loads fine, but lifecycle callbacks "
-        "(_ready, _process, ...) will not fire.");
-    return nullptr;
+    return turmeric_instance_create(const_cast<TurmericScript *>(this), p_for_object);
 }
 
 void *TurmericScript::_placeholder_instance_create(Object *p_for_object) const {
