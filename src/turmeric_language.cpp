@@ -11,12 +11,6 @@ extern "C" {
 #include "turi/eval.h"
 #include "turi/env.h"
 #include "turi/value.h"
-
-// libturi embed-API gap: registered natives are only callable through the
-// elaborator when g_interpret_mode is true, but neither turi_init nor
-// turi_env_new flips this for embedders. See
-// docs/reported/libturi-embed-interpret-mode-flag.md in the turmeric repo.
-extern bool g_interpret_mode;
 }
 
 namespace godot {
@@ -104,7 +98,6 @@ PackedStringArray TurmericLanguage::_get_string_delimiters() const {
 
 void TurmericLanguage::init_turi() {
     turi_init(false);
-    g_interpret_mode = true; // see embed-API gap report
     turi_env = turi_env_new();
     turi_env_register_native(turi_env, "godot-println", tg_native_println, nullptr);
 }
