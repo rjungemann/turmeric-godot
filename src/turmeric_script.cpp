@@ -3,7 +3,11 @@
 #include "turmeric_language.h"
 
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+
+#include <utility>
 
 #include <cstdio>
 
@@ -91,10 +95,11 @@ Error TurmericScript::_reload(bool p_keep_state) {
     // born with.
     turi_env_reset(turi_env);
 
-    // G2 :exports — drop the prior reload's declarations before the new
-    // source registers them. Doing it after env reset means a script that
-    // removed an export will no longer offer it to the inspector.
+    // G2 :exports / :signals — drop the prior reload's declarations before
+    // the new source registers them. Doing it after env reset means a
+    // script that removed an export/signal no longer offers it.
     clear_exports();
+    clear_signals();
 
     // Gap 3 fix: route this env's diagnostics through our sink so they
     // surface in Godot's Output panel attributed to this script.
@@ -156,9 +161,34 @@ bool TurmericScript::_has_method(const StringName &p_method) const {
     return false;
 }
 bool TurmericScript::_has_script_signal(const StringName &p_signal) const {
-    (void)p_signal;
-    return false;
+    return find_signal(p_signal) != nullptr;
 }
+
+TypedArray<Dictionary> TurmericScript::_get_script_signal_list() const {
+    TypedArray<Dictionary> out;
+    for (const auto &s : signals) {
+        Dictionary sig;
+        sig["name"] = s.name;
+        Array args;
+        for (const auto &a : s.args) {
+            Dictionary arg;
+            arg["name"]        = a.name;
+            arg["type"]        = (int)a.type;
+            arg["class_name"]  = StringName();
+            arg["hint"]        = 0;     // PROPERTY_HINT_NONE
+            arg["hint_string"] = String();
+            arg["usage"]       = 6;     // PROPERTY_USAGE_STORAGE | EDITOR
+            args.push_back(arg);
+        }
+        sig["args"]         = args;
+        sig["default_args"] = Array();
+        sig["flags"]        = 1;        // METHOD_FLAG_NORMAL
+        sig["id"]           = 0;
+        out.push_back(sig);
+    }
+    return out;
+}
+
 void TurmericScript::_update_exports() {}
 
 // --- Instance creation: G1 stub ---
@@ -189,6 +219,23 @@ void TurmericScript::add_export(const StringName &name, Variant::Type type,
 const ExportDecl *TurmericScript::find_export(const StringName &name) const {
     for (const auto &e : exports) {
         if (e.name == name) return &e;
+    }
+    return nullptr;
+}
+
+void TurmericScript::add_signal(const StringName &name, std::vector<SignalArg> args) {
+    for (auto &s : signals) {
+        if (s.name == name) {
+            s.args = std::move(args);
+            return;
+        }
+    }
+    signals.push_back(SignalDecl{name, std::move(args)});
+}
+
+const SignalDecl *TurmericScript::find_signal(const StringName &name) const {
+    for (const auto &s : signals) {
+        if (s.name == name) return &s;
     }
     return nullptr;
 }

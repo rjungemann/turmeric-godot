@@ -7,6 +7,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
 #include <vector>
@@ -22,6 +23,18 @@ struct ExportDecl {
     StringName    name;
     Variant::Type type;
     Variant       default_value;
+};
+
+// G2 :signals — one declaration registered by `(godot-signal ...)` at the
+// top level of a script. Surfaces in the Node dock under the script's
+// signals, just like GDScript's `signal` keyword.
+struct SignalArg {
+    StringName    name;
+    Variant::Type type;
+};
+struct SignalDecl {
+    StringName             name;
+    std::vector<SignalArg> args;
 };
 
 // G1: a TurmericScript holds the source code of one `.tur` file and, on
@@ -58,6 +71,7 @@ public:
     // --- Methods (stubbed for now) ---
     bool _has_method(const StringName &p_method) const override;
     bool _has_script_signal(const StringName &p_signal) const override;
+    TypedArray<Dictionary> _get_script_signal_list() const override;
     void _update_exports() override;
 
     // --- Instance creation ---
@@ -77,11 +91,18 @@ public:
     // Returns nullptr if `name` was not declared via `godot-export`.
     const ExportDecl *find_export(const StringName &name) const;
 
+    // --- G2 :signals ---
+    void add_signal(const StringName &name, std::vector<SignalArg> args);
+    void clear_signals() { signals.clear(); }
+    const std::vector<SignalDecl> &get_signals() const { return signals; }
+    const SignalDecl *find_signal(const StringName &name) const;
+
 private:
     String                  source_code;
     bool                    loaded   = false;
     TuriEnv                *turi_env = nullptr;
     std::vector<ExportDecl> exports;
+    std::vector<SignalDecl> signals;
 };
 
 } // namespace godot

@@ -1,0 +1,16 @@
+;; G2 :signals — declares signals at top-level via (godot-signal ...) and
+;; emits them from instance methods via (emit-signal ...). Driven by
+;; signals.gd, which connects to each signal and asserts emission.
+
+(godot-signal "ready-signal")               ; zero-arg
+(godot-signal "hit" "damage" "int")          ; one-arg
+(godot-signal "scored" "by" "string" "points" "int")  ; two-arg
+
+(defn _ready []
+  (emit-signal "ready-signal"))
+
+(defn take-damage [amount : int]
+  (emit-signal "hit" amount))
+
+(defn score [who : cstr pts : int]
+  (emit-signal "scored" who pts))

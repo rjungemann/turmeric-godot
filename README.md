@@ -4,9 +4,11 @@ A Godot 4 GDExtension that registers Turmeric (`.tur`) as a scripting language.
 
 **Status:** G2 in progress -- script source is evaluated by libturi, lifecycle
 hooks (`_ready`, `_process`, `_input`, ...) dispatch to user defns,
-`load("res://x.tur")` round-trips through the ResourceFormatLoader, and
-`(godot-export ...)` properties round-trip to the inspector. Signals, AOT
-mode, and the paddle-pong demo are still pending. See
+`load("res://x.tur")` round-trips through the ResourceFormatLoader,
+`(godot-export ...)` properties round-trip to the inspector, and
+`(godot-signal ...)` declarations surface in the Node dock with
+`(emit-signal ...)` firing them at runtime. AOT mode and the paddle-pong
+demo are still pending. See
 [`docs/upcoming/v1/godot-language-binding-plan.md`](https://github.com/rjungemann/turmeric/blob/main/docs/upcoming/v1/godot-language-binding-plan.md)
 in the turmeric repo for the full plan.
 
@@ -18,6 +20,8 @@ in the turmeric repo for the full plan.
 | `(godot-export name type default)` | Declares an inspector-visible property. Call at top level. `type` is `"float" \| "int" \| "bool" \| "string"`. |
 | `(godot-prop-get name)` | Reads the export on the current instance (falls back to the declared default). Strings return nil in v1. |
 | `(godot-prop-set name val)` | Writes the export on the current instance. Coerces to the declared type. |
+| `(godot-signal name [arg-name arg-type]...)` | Declares a signal on the script; appears in the Node dock. Call at top level. Variadic (name,type) pairs after the signal name. |
+| `(emit-signal name args...)` | Emits a declared signal on the current instance's owner. Arity checked against the declaration. |
 
 ## Build (macOS arm64)
 

@@ -2,10 +2,15 @@
 #include "turmeric_script.h"
 #include "turmeric_instance.h"
 
+#include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/core/memory.hpp>
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/variant.hpp>
+
+#include <utility>
+#include <vector>
 
 #include <cstdio>
 #include <cstring>
@@ -145,6 +150,84 @@ static TuriValue tg_native_prop_get(TuriEnv *env, TuriValue *args, uint32_t n, v
                                                                   : d->default_value);
 }
 
+// (godot-signal NAME ARG-NAME-1 ARG-TYPE-1 ...) -- declares a signal on the
+// currently-reloading script. Variadic: pairs of (name, type) after the
+// signal name describe the signal's args. Zero-arg signals are fine.
+static TuriValue tg_native_signal(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n < 1 || args[0].tag != TURI_CSTR || !args[0].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-signal) expected at least a signal name (cstr)");
+        return turi_nil();
+    }
+    TurmericScript *script = g_reloading_script;
+    if (!script) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-signal) called outside script reload");
+        return turi_nil();
+    }
+    if (((n - 1) & 1u) != 0) {
+        UtilityFunctions::printerr(String("turmeric-godot: (godot-signal '") +
+                                   String(args[0].as_cstr) +
+                                   String("') arg list must be (name type) pairs"));
+        return turi_nil();
+    }
+    std::vector<SignalArg> sig_args;
+    for (uint32_t i = 1; i + 1 < n; i += 2) {
+        if (args[i].tag != TURI_CSTR || !args[i].as_cstr ||
+            args[i + 1].tag != TURI_CSTR || !args[i + 1].as_cstr) {
+            UtilityFunctions::printerr("turmeric-godot: (godot-signal) arg name/type must be strings");
+            return turi_nil();
+        }
+        Variant::Type vt = tg_parse_export_type(args[i + 1].as_cstr);
+        if (vt == Variant::NIL) {
+            UtilityFunctions::printerr(String("turmeric-godot: (godot-signal) unsupported arg type: ") +
+                                       String(args[i + 1].as_cstr));
+            return turi_nil();
+        }
+        sig_args.push_back(SignalArg{StringName(args[i].as_cstr), vt});
+    }
+    script->add_signal(StringName(args[0].as_cstr), std::move(sig_args));
+    return turi_nil();
+}
+
+// (emit-signal NAME ARGS...) -- emits a declared signal on the current
+// instance's owner object. Variadic; arity checked against the declaration.
+static TuriValue tg_native_emit_signal(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n < 1 || args[0].tag != TURI_CSTR || !args[0].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (emit-signal) expected a signal name (cstr)");
+        return turi_nil();
+    }
+    TurmericInstance *self = g_current_instance;
+    if (!self || !self->owner) {
+        UtilityFunctions::printerr("turmeric-godot: (emit-signal) called outside an instance method");
+        return turi_nil();
+    }
+    StringName sig_name(args[0].as_cstr);
+    const SignalDecl *decl = self->script ? self->script->find_signal(sig_name) : nullptr;
+    if (!decl) {
+        UtilityFunctions::printerr(String("turmeric-godot: (emit-signal) undeclared signal: ") +
+                                   String(args[0].as_cstr));
+        return turi_nil();
+    }
+    const uint32_t sig_argc = n - 1;
+    if (sig_argc != decl->args.size()) {
+        UtilityFunctions::printerr(String("turmeric-godot: (emit-signal '") +
+                                   String(args[0].as_cstr) +
+                                   String("') wrong arg count: expected ") +
+                                   String::num_int64((int64_t)decl->args.size()) +
+                                   String(", got ") +
+                                   String::num_int64((int64_t)sig_argc));
+        return turi_nil();
+    }
+    Array call_args;
+    call_args.push_back(sig_name);
+    for (uint32_t i = 0; i < sig_argc; i++) {
+        call_args.push_back(tg_turi_to_variant_typed(args[i + 1], decl->args[i].type));
+    }
+    self->owner->callv(StringName("emit_signal"), call_args);
+    return turi_nil();
+}
+
 // (godot-prop-set NAME VAL) -- write a declared export on the current
 // instance. Coerces VAL to the declared type when sensible.
 static TuriValue tg_native_prop_set(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
@@ -241,6 +324,8 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native("godot-export",   tg_native_export,   nullptr);
     turi_register_default_native("godot-prop-get", tg_native_prop_get, nullptr);
     turi_register_default_native("godot-prop-set", tg_native_prop_set, nullptr);
+    turi_register_default_native("godot-signal",   tg_native_signal,   nullptr);
+    turi_register_default_native("emit-signal",    tg_native_emit_signal, nullptr);
 }
 
 void TurmericLanguage::shutdown_turi() {
