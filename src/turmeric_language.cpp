@@ -318,17 +318,21 @@ static TuriValue tg_native_export(TuriEnv *env, TuriValue *args, uint32_t n, voi
 // shared primitive marshaller. Aggregate types (VECTOR2 / VECTOR3 /
 // COLOR / RECT2) get pushed into the per-frame Variant arena so the
 // script receives a tagged :int handle compatible with the existing
-// godot-vec2-x / godot-color-r / etc. accessors. STRING-typed props
-// still emit a warning -- they need the string-arena route, which the
-// godot-prop-get-c variant (a follow-up) would wire up cleanly.
+// godot-vec2-x / godot-color-r / etc. accessors. STRING types go
+// through the per-frame string arena -- the cstr is valid for the
+// rest of the current outer cb_call. (The elaborator types godot-
+// prop-get as :int regardless, so callers that need a statically
+// typed :cstr should reach for godot-prop-get-c instead.)
 static TuriValue tg_variant_to_turi(const Variant &v) {
     const Variant::Type t = v.get_type();
     switch (t) {
         case Variant::STRING:
-            UtilityFunctions::printerr(
-                "turmeric-godot: (godot-prop-get) string-typed properties cannot "
-                "be read from script in v1; returning nil");
-            return turi_nil();
+        case Variant::STRING_NAME:
+        case Variant::NODE_PATH: {
+            String s = v;
+            CharString cs = s.utf8();
+            return turi_cstr(string_arena_push(cs.get_data(), (size_t)cs.length()));
+        }
         case Variant::VECTOR2:
         case Variant::VECTOR3:
         case Variant::COLOR:
