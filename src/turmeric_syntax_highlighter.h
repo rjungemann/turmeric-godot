@@ -42,6 +42,17 @@ public:
     Dictionary highlight_line_for_test(const String &p_line) const;
 };
 
+// Forward-declared so the header doesn't have to include the cpp-side
+// palette struct; the field is used only by the implementation.
+struct TgPalette {
+    Color keyword;
+    Color comment;
+    Color string_;
+    Color number;
+    Color paren;
+    Color symbol;
+};
+
 class TurmericEditorSyntaxHighlighter : public EditorSyntaxHighlighter {
     GDCLASS(TurmericEditorSyntaxHighlighter, EditorSyntaxHighlighter)
 
@@ -55,6 +66,15 @@ public:
     Dictionary _get_line_syntax_highlighting(int32_t p_line) const override;
     String     _get_name() const override;
     PackedStringArray _get_supported_languages() const override;
+
+    // Fires whenever the editor theme changes (or on first attachment).
+    // We refresh the cached palette from EditorSettings here so the
+    // highlighter colors track the user's theme without each
+    // _get_line_syntax_highlighting call paying the setting-lookup cost.
+    void _update_cache() override;
+
+private:
+    TgPalette palette;
 };
 
 } // namespace godot
