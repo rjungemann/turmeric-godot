@@ -1,0 +1,13 @@
+;; Demonstrates (godot-connect SOURCE SIGNAL METHOD). The driver sets
+;; up a sibling Timer with autostart=true and one_shot=true; this
+;; script subscribes its `on-tick` to Timer.timeout. When the timer
+;; fires, on-tick renames self so the driver can assert.
+
+(defn on-tick []
+  (let [self (node/self)]
+    (godot-call-v self "set_name" "tick-received")))
+
+(defn _ready []
+  (let [self  (node/self)
+        timer (godot-call self "get_node" "../Beat")]
+    (godot-connect timer "timeout" "on-tick")))

@@ -10,6 +10,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/callable.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/rect2.hpp>
 #include <godot_cpp/variant/transform2d.hpp>
@@ -18,11 +19,69 @@
 #include <godot_cpp/variant/vector3.hpp>
 
 #include <cstdint>
+#include <cstdio>
 #include <vector>
 
 namespace godot {
 
 // --- Self -------------------------------------------------------------------
+
+TuriValue tg_native_godot_connect(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 3 ||
+        args[0].tag != TURI_INT ||
+        args[1].tag != TURI_CSTR || !args[1].as_cstr ||
+        args[2].tag != TURI_CSTR || !args[2].as_cstr) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect SOURCE SIGNAL METHOD) takes "
+            "(:int handle, :cstr, :cstr)");
+        return turi_nil();
+    }
+    if (variant_arena_is_handle(args[0].as_int)) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect) SOURCE must be an Object handle, not an arena value");
+        return turi_nil();
+    }
+    Object *source = (Object *)(intptr_t)args[0].as_int;
+    if (!source) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-connect) SOURCE is null");
+        return turi_nil();
+    }
+    TurmericInstance *self = g_current_instance;
+    if (!self || !self->owner) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect) called outside an instance method; "
+            "no `self` to bind the callable to");
+        return turi_nil();
+    }
+    Callable cb(self->owner, StringName(args[2].as_cstr));
+    int err = source->connect(StringName(args[1].as_cstr), cb);
+    if (err != 0 /* OK */) {
+        UtilityFunctions::printerr(
+            String("turmeric-godot: (godot-connect '") + String(args[1].as_cstr) +
+            String("') failed with error ") + String::num_int64((int64_t)err));
+    }
+    return turi_nil();
+}
+
+TuriValue tg_native_godot_num_to_str(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    char buf[64];
+    int len = 0;
+    if (n != 1) {
+        buf[0] = '\0';
+    } else if (args[0].tag == TURI_FLOAT) {
+        len = std::snprintf(buf, sizeof(buf), "%g", args[0].as_float);
+    } else if (args[0].tag == TURI_INT) {
+        len = std::snprintf(buf, sizeof(buf), "%lld", (long long)args[0].as_int);
+    } else if (args[0].tag == TURI_BOOL) {
+        len = std::snprintf(buf, sizeof(buf), "%s", args[0].as_bool ? "true" : "false");
+    } else {
+        buf[0] = '\0';
+    }
+    if (len < 0) len = 0;
+    return turi_cstr(string_arena_push(buf, (size_t)len));
+}
 
 TuriValue tg_native_godot_singleton(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
     (void)env; (void)ud;

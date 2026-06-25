@@ -49,3 +49,39 @@ else:
     )
 
 Default(library)
+
+# --- Sync built framework into every examples/*/ project ---------------------
+# Each demo project (paddle-pong-tur, future examples) holds its own
+# turmeric-godot.gdextension manifest pointing at res://bin/... -- and
+# needs the built framework dropped under its bin/. Rather than the
+# user copying after every build, post a SCons action that mirrors
+# examples/spike/bin/ into every sibling example with a manifest.
+import shutil
+
+def _sync_examples(target, source, env):
+    spike_bin = "examples/spike/bin"
+    if not os.path.isdir(spike_bin):
+        return
+    artifacts = [os.path.join(spike_bin, e) for e in os.listdir(spike_bin)
+                 if not e.startswith(".")]
+    if not artifacts:
+        return
+    for entry in os.listdir("examples"):
+        proj = os.path.join("examples", entry)
+        if entry == "spike" or not os.path.isdir(proj):
+            continue
+        if not os.path.isfile(os.path.join(proj, "turmeric-godot.gdextension")):
+            continue
+        dst_bin = os.path.join(proj, "bin")
+        os.makedirs(dst_bin, exist_ok=True)
+        for art in artifacts:
+            dst = os.path.join(dst_bin, os.path.basename(art))
+            if os.path.isdir(art):
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(art, dst, symlinks=False)
+            else:
+                shutil.copy2(art, dst)
+        print("[turmeric-godot] synced bin -> {}".format(dst_bin))
+
+env.AddPostAction(library, _sync_examples)

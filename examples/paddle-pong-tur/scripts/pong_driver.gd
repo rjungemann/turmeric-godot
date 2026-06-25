@@ -94,11 +94,13 @@ func _init() -> void:
 	if p2.position.y <= 240.0:
 		_fail("P2 did not move down; y=%s" % str(p2.position.y))
 
-	# Label was updated by score.tur via (label/set-text ...).
-	# Ball starts at x=100 (left of midpoint=320) and ends ~277 after
-	# the run -- still left of midpoint, so the label should say so.
-	if label.text != "ball on left half":
-		_fail("Label not updated; text=%s" % str(label.text))
+	# Label was updated by score.tur via (label/set-text (godot-num->str bx)).
+	# The text is the live ball x as a number; assert it parses as a
+	# float roughly matching ball.position.x (within one frame's drift,
+	# since the label updates *before* the final ball move of the run).
+	var parsed := float(label.text)
+	if abs(parsed - ball.position.x) > 5.0:
+		_fail("Label text %s doesn't match ball.x=%s" % [str(label.text), str(ball.position.x)])
 
 	if fail_count == 0:
 		print("[pong] all assertions passed: ball=%s vy=%.2f  p1.y=%.2f  p2.y=%.2f" %

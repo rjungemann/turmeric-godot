@@ -1,0 +1,20 @@
+;; Demonstrates the defopaque newtypes from the prelude. A function that
+;; expects a NodeHandle accepts only values wrapped via int->nh; passing
+;; a raw :int (e.g. the result of godot-self) would be a TUR-E type
+;; error at the call site -- the script wraps explicitly at the boundary
+;; and unwraps at every godot-call.
+;;
+;; This is "stricter than the rest of the prelude" by intent: the prelude
+;; itself still trades in bare :ints to compose with the generated
+;; facade, but user scripts that want extra safety can layer the
+;; newtypes on top.
+
+(defn rotate-by [self : NodeHandle delta : float]
+  ;; Unwrap to :int at the godot-call boundary -- the native is still
+  ;; typed `[: int]`. Returning :void by virtue of godot-call-v.
+  (godot-call-v (:: self :int) "set_rotation" delta))
+
+(defn _ready []
+  (let [self-h (:: (godot-self) :NodeHandle)]
+    (rotate-by self-h 0.75)
+    (godot-println "[typed-handles] rotation set via typed NodeHandle wrapper")))

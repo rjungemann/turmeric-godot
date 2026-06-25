@@ -236,10 +236,17 @@ static TuriValue tg_native_println(TuriEnv *env, TuriValue *args, uint32_t n, vo
 
 static Variant::Type tg_parse_export_type(const char *t) {
     if (!t) return Variant::NIL;
-    if (!std::strcmp(t, "float"))  return Variant::FLOAT;
-    if (!std::strcmp(t, "int"))    return Variant::INT;
-    if (!std::strcmp(t, "bool"))   return Variant::BOOL;
-    if (!std::strcmp(t, "string")) return Variant::STRING;
+    if (!std::strcmp(t, "float"))   return Variant::FLOAT;
+    if (!std::strcmp(t, "int"))     return Variant::INT;
+    if (!std::strcmp(t, "bool"))    return Variant::BOOL;
+    if (!std::strcmp(t, "string"))  return Variant::STRING;
+    // Aggregate / handle types: the default value comes through as an
+    // arena handle (tagged :int) or an Object pointer (plain :int).
+    if (!std::strcmp(t, "vec2"))    return Variant::VECTOR2;
+    if (!std::strcmp(t, "vec3"))    return Variant::VECTOR3;
+    if (!std::strcmp(t, "color"))   return Variant::COLOR;
+    if (!std::strcmp(t, "rect2"))   return Variant::RECT2;
+    if (!std::strcmp(t, "object"))  return Variant::OBJECT;
     return Variant::NIL;
 }
 
@@ -257,6 +264,22 @@ static Variant tg_turi_to_variant_typed(TuriValue v, Variant::Type t) {
             return (v.tag == TURI_BOOL) ? (bool)v.as_bool : false;
         case Variant::STRING:
             return String((v.tag == TURI_CSTR && v.as_cstr) ? v.as_cstr : "");
+        case Variant::VECTOR2:
+        case Variant::VECTOR3:
+        case Variant::COLOR:
+        case Variant::RECT2: {
+            // Aggregate types live in the per-frame Variant arena.
+            // Reach into the arena and copy out the live Variant.
+            if (v.tag != TURI_INT) return Variant();
+            const Variant *vp = variant_arena_lookup(v.as_int);
+            return vp ? *vp : Variant();
+        }
+        case Variant::OBJECT: {
+            // Plain :int Object handle (not arena-tagged).
+            if (v.tag != TURI_INT) return Variant();
+            Object *o = (Object *)(intptr_t)v.as_int;
+            return Variant(o);
+        }
         default: return Variant();
     }
 }
@@ -291,18 +314,33 @@ static TuriValue tg_native_export(TuriEnv *env, TuriValue *args, uint32_t n, voi
     return turi_nil();
 }
 
-// Variant -> TuriValue for prop-get returns. Routes through the shared
-// primitive marshaller and additionally prints a hint for STRING values
-// (the primitive helper silently nils strings here because prop-get has no
-// owner buffer to keep the utf8 bytes alive).
+// Variant -> TuriValue for prop-get returns. Primitives go through the
+// shared primitive marshaller. Aggregate types (VECTOR2 / VECTOR3 /
+// COLOR / RECT2) get pushed into the per-frame Variant arena so the
+// script receives a tagged :int handle compatible with the existing
+// godot-vec2-x / godot-color-r / etc. accessors. STRING-typed props
+// still emit a warning -- they need the string-arena route, which the
+// godot-prop-get-c variant (a follow-up) would wire up cleanly.
 static TuriValue tg_variant_to_turi(const Variant &v) {
-    if (v.get_type() == Variant::STRING) {
-        UtilityFunctions::printerr(
-            "turmeric-godot: (godot-prop-get) string-typed properties cannot "
-            "be read from script in v1; returning nil");
-        return turi_nil();
+    const Variant::Type t = v.get_type();
+    switch (t) {
+        case Variant::STRING:
+            UtilityFunctions::printerr(
+                "turmeric-godot: (godot-prop-get) string-typed properties cannot "
+                "be read from script in v1; returning nil");
+            return turi_nil();
+        case Variant::VECTOR2:
+        case Variant::VECTOR3:
+        case Variant::COLOR:
+        case Variant::RECT2:
+            return turi_int(variant_arena_push(v));
+        case Variant::OBJECT: {
+            Object *o = (Object *)v;
+            return turi_int((int64_t)(intptr_t)o);
+        }
+        default:
+            return variant_to_turi_primitive(v, nullptr);
     }
-    return variant_to_turi_primitive(v, nullptr);
 }
 
 // (godot-prop-get NAME) -- read a declared export on the current instance.
@@ -526,6 +564,8 @@ void TurmericLanguage::init_turi() {
     // G3.a -- generic ClassDB proxy + Variant arena.
     turi_register_default_native      ("godot-self",       tg_native_godot_self,    nullptr);                // :int Object handle
     turi_register_default_native      ("godot-singleton",  tg_native_godot_singleton, nullptr);              // :int Object handle
+    turi_register_default_native_typed("godot-num->str",  tg_native_godot_num_to_str, nullptr, TUR_NRT_CSTR);
+    turi_register_default_native_typed("godot-connect",   tg_native_godot_connect,   nullptr, TUR_NRT_VOID);
     turi_register_default_native      ("godot-call",       tg_native_godot_call,    nullptr);                // dynamic
     // Codegen v2 typed variants -- gen_godot_facade.py picks the right one
     // per JSON return type so the generated wrapper declares an honest type.

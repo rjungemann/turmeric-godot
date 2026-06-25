@@ -1,0 +1,20 @@
+;; Demonstrates inspector exports beyond primitives. The default values
+;; are arena-handle vec2/color, stored as Variants in the per-instance
+;; property map. The script reads them back through godot-prop-get,
+;; which now marshals aggregate-typed Variants as arena handles too.
+
+(godot-export "offset"   "vec2"  (godot-vec2 5.0 7.0))
+(godot-export "tint"     "color" (godot-color 0.1 0.2 0.3 1.0))
+
+(defn _ready []
+  (let [self (node/self)
+        ofs  (godot-prop-get "offset")
+        tint (godot-prop-get "tint")
+        ox   (node/vec2-x ofs)
+        oy   (node/vec2-y ofs)
+        tr   (node/color-r tint)]
+    (godot-println "[agg-export] read vec2 + color back from inspector storage")
+    ;; Apply the offset to self.position so the driver can assert
+    ;; the round-trip landed.
+    (node/set-position self (godot-vec2 ox oy))
+    (node/set-modulate self tint)))

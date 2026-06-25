@@ -17,6 +17,25 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; turmeric-godot baked-in prelude (G3.b, post-typed-natives upgrade).
 ;; Curated short-form facade over the godot-* natives.
 
+;; --- Opaque handle types ----------------------------------------------------
+;; Newtypes over :int so the typechecker can distinguish an Object handle
+;; from an arena-handle from a raw int. Conversion is by ascription:
+;;   (:: h :int)         unwrap to raw
+;;   (:: i :NodeHandle)  wrap a raw int
+;; Most prelude wrappers still take/return :int today so generated-facade
+;; calls compose; the newtypes are available for user scripts that want
+;; stricter signatures.
+(defopaque NodeHandle :int)
+(defopaque Vec2Handle :int)
+(defopaque Vec3Handle :int)
+(defopaque ColorHandle :int)
+(defopaque Rect2Handle :int)
+
+(defn nh->int [h : NodeHandle] : int (:: h :int))
+(defn int->nh [i : int] : NodeHandle (:: i :NodeHandle))
+(defn vec2h->int [h : Vec2Handle] : int (:: h :int))
+(defn int->vec2h [i : int] : Vec2Handle (:: i :Vec2Handle))
+
 ;; --- Builders ---------------------------------------------------------------
 (defn node/vec2 [x : float y : float] : int (godot-vec2 x y))
 (defn node/vec3 [x : float y : float z : float] : int (godot-vec3 x y z))

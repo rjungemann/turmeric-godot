@@ -17,6 +17,17 @@ TuriValue tg_native_godot_self(TuriEnv *env, TuriValue *args, uint32_t n, void *
 //   (godot-call (godot-singleton "Input") "is_action_pressed" "ui_up")
 TuriValue tg_native_godot_singleton(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// (godot-num->str X) -> :cstr formatted via the string arena. Accepts :int
+// or :float; anything else returns "". Lifetime is the per-frame string
+// arena (same as godot-call-c and the other cstr returns).
+TuriValue tg_native_godot_num_to_str(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+// (godot-connect SOURCE-OBJ SIGNAL-NAME METHOD-NAME) -> :void
+// Subscribes the current instance's `METHOD-NAME` defn to SOURCE-OBJ's
+// signal. METHOD-NAME is the bare Turmeric defn name (no namespace);
+// dispatch goes through cb_call exactly like _ready / _process.
+TuriValue tg_native_godot_connect(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 // (godot-call OBJ METHOD args...) -> primitive or arena-handle result.
 //
 // OBJ: :int Object handle (from godot-self).
