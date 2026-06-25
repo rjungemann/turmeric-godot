@@ -1,0 +1,19 @@
+;; G3.c -- demonstrate the codegen'd facade from extension_api.json.
+;;
+;; Uses class-prefixed wrappers (node2d/...) generated automatically by
+;; tools/gen_godot_facade.py. The prelude defines the curated short
+;; forms (node/set-position); the generated facade fills in everything
+;; else (node2d/set-skew, node2d/set-scale, ...).
+
+(defn _ready []
+  (let [self (node/self)]
+    ;; Curated prelude wrapper (short form).
+    (node/set-position self (godot-vec2 10.0 20.0))
+
+    ;; Generated wrapper: Node2D.set_skew(float radians).
+    (node2d/set-skew self 0.1)
+
+    ;; Generated wrapper: Node2D.set_scale(Vector2 scale).
+    (node2d/set-scale self (godot-vec2 2.0 0.5))
+
+    (godot-println "[generated_facade] set_skew + set_scale via generated wrappers")))

@@ -18,6 +18,7 @@ extern "C" {
 }
 
 #include "bridge/prelude.h"
+#include "bridge/generated_facade.h"
 
 namespace godot {
 
@@ -130,6 +131,22 @@ Error TurmericScript::_reload(bool p_keep_state) {
             UtilityFunctions::printerr(
                 String("turmeric-godot: baked-in prelude failed to eval: ") +
                 String(pv.as_error ? pv.as_error : "<unknown>"));
+            loaded = false;
+            return ERR_BUG;
+        }
+    }
+
+    // G3.c -- evaluate the codegen'd extension_api.json facade after the
+    // hand-written prelude so curated names (node/set-position, ...)
+    // take precedence over the per-class generated forms
+    // (node2d/set-position, ...). The generator skips prelude-covered
+    // method names on Node to avoid two competing definitions.
+    {
+        TuriValue gv = turi_eval(turi_env, TG_GENERATED_FACADE_SOURCE);
+        if (gv.tag == TURI_ERROR) {
+            UtilityFunctions::printerr(
+                String("turmeric-godot: generated facade failed to eval: ") +
+                String(gv.as_error ? gv.as_error : "<unknown>"));
             loaded = false;
             return ERR_BUG;
         }
