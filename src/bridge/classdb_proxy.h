@@ -28,6 +28,16 @@ TuriValue tg_native_godot_num_to_str(TuriEnv *env, TuriValue *args, uint32_t n, 
 // dispatch goes through cb_call exactly like _ready / _process.
 TuriValue tg_native_godot_connect(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// (godot-connect-typed SOURCE-OBJ SIGNAL-NAME HANDLER-CLOSURE) -> :void
+// G6.1 -- type-checked sibling of godot-connect. Takes a Turmeric closure
+// value (not a method name) and binds it into the script's env under a
+// synthesized symbol; that symbol is what Godot's Callable targets, so
+// dispatch routes through cb_call just like a named defn. The wrapper
+// emitted by gen_godot_facade.py declares the handler parameter as
+// (fn [arg-types...] void), so handler/signal mismatches are rejected at
+// elaboration time instead of silently no-op'ing at runtime.
+TuriValue tg_native_godot_connect_typed(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 // (godot-call OBJ METHOD args...) -> primitive or arena-handle result.
 //
 // OBJ: :int Object handle (from godot-self).

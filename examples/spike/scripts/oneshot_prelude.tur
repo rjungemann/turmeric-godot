@@ -1,0 +1,23 @@
+;; G6.3 -- curated one-shot prelude entries.
+;;
+;; Demonstrates:
+;;   (get-tree)                       -> SceneTree handle
+;;   (timer/one-shot seconds handler) -> creates SceneTreeTimer + connects
+;;   (engine), (engine/get-process-fps), (engine/get-frames-drawn)
+;;   (os),     (os/get-system-time-msecs)
+;;
+;; The driver (oneshot_prelude.gd) waits ~150ms; the one-shot closure
+;; renames Subject to "after-fired" within that window. Driver asserts.
+
+(defn _ready []
+  ;; Prove the singleton accessors compose: fetching a process-fps reading
+  ;; shouldn't crash even on the first attach frame (returns 0.0 if Godot
+  ;; hasn't recorded yet).
+  (let [_fps    (engine/get-process-fps)
+        _frames (engine/get-frames-drawn)
+        _ms     (os/get-system-time-msecs)]
+    (godot-println "[oneshot_prelude] singletons reachable; arming timer/one-shot"))
+  ;; Schedule a 0.05s one-shot to rename self.
+  (timer/one-shot 0.05
+    (fn []
+      (godot-call-v (node/self) "set_name" "after-fired"))))

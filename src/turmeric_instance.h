@@ -6,8 +6,11 @@
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
+#include <array>
 #include <unordered_map>
 #include <string>
+
+namespace godot { namespace aot { class AotImage; struct AotExport; } }
 
 namespace godot {
 
@@ -35,6 +38,36 @@ struct TurmericInstance {
     // cb_free_property_list (paired by Godot with each cb_get_property_list).
     // Defined in turmeric_instance.cpp.
     void *property_list_buf = nullptr;
+
+    // T1.B -- per-instance AOT lookup cache. cb_call calls into
+    // dispatch_aot_call on every Godot-side method invocation; the
+    // resolved AotExport* is otherwise re-found via linear scan over
+    // the exports vector each call. Eight entries cover any plausible
+    // per-instance method fan-out (lifecycle + a few gameplay
+    // callbacks); when the underlying AotImage* changes (script
+    // reload) the cache is invalidated whole rather than per-entry.
+    struct AotCacheEntry {
+        StringName             name;
+        const aot::AotExport  *export_ = nullptr;
+    };
+    const aot::AotImage              *aot_cache_image = nullptr;
+    std::array<AotCacheEntry, 8>      aot_cache;
+    uint8_t                           aot_cache_head  = 0;
+
+    // Cache probe. `*out_cached` distinguishes the three states:
+    //   - cached hit:  out_cached=true, returns the resolved export.
+    //   - cached miss: out_cached=true, returns nullptr (the slow path
+    //                  already established this method isn't in the
+    //                  manifest; caller takes the interp fallback
+    //                  without re-scanning).
+    //   - cold:        out_cached=false, returns nullptr; the caller
+    //                  must call resolve_aot_method and aot_cache_insert.
+    const aot::AotExport *aot_cache_lookup(const aot::AotImage *image,
+                                            const StringName    &name,
+                                            bool                 *out_cached) const;
+    void                  aot_cache_insert(const aot::AotImage *image,
+                                            const StringName    &name,
+                                            const aot::AotExport *ex);
 };
 
 // G2 :exports — TLS pointer to the instance currently in the body of a

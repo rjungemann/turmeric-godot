@@ -1,0 +1,17 @@
+;; G6.1 -- typed signal-connect via the generated (timer/on-timeout ...)
+;; wrapper. The handler is passed as a closure value; its type
+;; `(fn [] void)` is checked against Timer.timeout's signature at
+;; elaboration time, so a wrong-arity closure is TUR-E0001 at script
+;; load instead of a silent runtime no-op.
+;;
+;; Sibling layout mirrors connect_signal: ../Beat is the Timer that
+;; fires after 50ms. Driver asserts on the renamed Subscriber node.
+
+(defn _ready []
+  (let [self  (node/self)
+        timer (godot-call self "get_node" "../Beat")]
+    ;; timer is :int from godot-call; ascribe to TimerHandle for the
+    ;; G6.2-typed wrapper.
+    (timer/on-timeout (:: timer :TimerHandle)
+      (fn []
+        (godot-call-v (node/self) "set_name" "tick-received")))))

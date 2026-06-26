@@ -1,0 +1,18 @@
+; aot-bench-heavy -- T1.C of godot-binding-aot-cleanup-plan.md.
+;
+; Companion to examples/aot-bench. Same harness; bench.tur's hot path
+; calls a recursive step() that walks ~50 closure frames per outer
+; iteration. The closure-call cost dominates the body, so the AOT-vs-
+; interp delta surfaces clearly above the ~250 ns of Godot Variant
+; fixed cost the original aot-bench gets pinned by.
+
+config_version=5
+
+[application]
+
+config/name="turmeric-godot AOT bench (heavy body)"
+config/features=PackedStringArray("4.3", "Forward Plus")
+
+[turmeric]
+
+execution_mode="interpreter"

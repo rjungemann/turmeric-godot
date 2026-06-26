@@ -23,9 +23,53 @@ extern "C" {
 
 #include "bridge/variant_marshal.h"
 
+#include "aot/aot_dispatch.h"
+#include "aot/aot_image.h"
+
 namespace godot {
 
 thread_local TurmericInstance *g_current_instance = nullptr;
+
+// T1.B -- per-instance AOT cache. Lookup returns nullptr to mean
+// "miss, do the slow path"; a cache miss is a (name, export_=nullptr)
+// entry, so a method that always falls through to interp (lifecycle
+// hooks not in the manifest) doesn't re-scan the exports vector each
+// call. cb_call distinguishes "cache says miss" from "not in cache"
+// via the StringName -- an empty name slot is uninitialised.
+const aot::AotExport *
+TurmericInstance::aot_cache_lookup(const aot::AotImage *image,
+                                    const StringName &name,
+                                    bool *out_cached) const {
+    if (out_cached) *out_cached = false;
+    if (!image || image != aot_cache_image) return nullptr;
+    for (const auto &slot : aot_cache) {
+        if (slot.name == name && !slot.name.is_empty()) {
+            if (out_cached) *out_cached = true;
+            return slot.export_;
+        }
+    }
+    return nullptr;
+}
+
+void
+TurmericInstance::aot_cache_insert(const aot::AotImage *image,
+                                    const StringName &name,
+                                    const aot::AotExport *ex) {
+    if (!image) return;
+    if (image != aot_cache_image) {
+        // Whole-cache invalidation -- a script reload swapped the
+        // image under us. Clear every slot before re-keying so a stale
+        // pointer from the previous image can never escape.
+        for (auto &slot : aot_cache) {
+            slot.name    = StringName();
+            slot.export_ = nullptr;
+        }
+        aot_cache_image = image;
+        aot_cache_head  = 0;
+    }
+    aot_cache[aot_cache_head & 7] = AotCacheEntry{name, ex};
+    aot_cache_head = (uint8_t)((aot_cache_head + 1) & 7);
+}
 
 // Primitive Variant <-> TuriValue marshalling lives in bridge/variant_marshal.
 // Local aliases keep the existing call sites short.
@@ -94,6 +138,44 @@ static void cb_call(GDExtensionScriptInstanceDataPtr p_self,
     StringName method = *reinterpret_cast<const StringName *>(p_method);
     String method_s = method;
     CharString method_cs = method_s.utf8();
+
+    // Phase A3 + T1.B: when the script has an AotImage bound, route
+    // through the pre-generated trampoline table first. The image only
+    // carries the user's own defns, so a miss (return false) falls back
+    // to the interpreter -- this is how curated natives + lifecycle
+    // methods the user did not AOT-export keep working.
+    //
+    // T1.B adds a per-instance ring cache so the linear scan over the
+    // exports vector (find / find_by_name) happens once per (image,
+    // method) pair instead of once per call. A cached miss is also
+    // stored so a method that consistently isn't in the manifest
+    // (lifecycle hooks routed to interp) doesn't keep paying the scan.
+    if (self && self->script) {
+        const aot::AotImage *image = self->script->get_aot_image();
+        if (image) {
+            bool cached = false;
+            const aot::AotExport *ex =
+                self->aot_cache_lookup(image, method, &cached);
+            if (!cached) {
+                ex = aot::resolve_aot_method(image, method_cs.get_data());
+                self->aot_cache_insert(image, method, ex);
+            }
+            if (ex) {
+                Variant aot_ret;
+                GDExtensionCallError aot_err{};
+                if (aot::dispatch_aot_call_with(image, ex,
+                                                 p_args, p_argument_count,
+                                                 &aot_ret, &aot_err)) {
+                    if (r_return) {
+                        internal::gdextension_interface_variant_new_copy(
+                            r_return, aot_ret._native_ptr());
+                    }
+                    if (r_error) *r_error = aot_err;
+                    return;
+                }
+            }
+        }
+    }
 
     TuriValue fn = lookup_method(self, method_cs.get_data());
     if (fn.tag != TURI_CLOSURE) {

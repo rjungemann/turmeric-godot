@@ -13,10 +13,12 @@
 
 (defn _process [delta : float]
   (let [self  (node/self)
-        ball  (godot-call self "get_node" "../Ball")
-        bp    (node/get-position ball)
-        bx    (node/vec2-x bp)]
-    ;; (godot-num->str : float -> :cstr) formats the live ball position
-    ;; into the label text. cstr is valid for the rest of this cb_call
-    ;; frame; label/set-text copies it into Godot's own String storage.
-    (label/set-text self (godot-num->str bx))))
+		ball  (godot-call self "get_node" "../Ball")
+		bp    (node/get-position ball)
+		bx    (node/vec2-x bp)]
+	;; (godot-num->str : float -> :cstr) formats the live ball position
+	;; into the label text. cstr is valid for the rest of this cb_call
+	;; frame; label/set-text copies it into Godot's own String storage.
+	;; G6.2 follow-up: label/set-text takes LabelHandle; self came from
+	;; (node/self) which is bare :int, so ascribe at the boundary.
+	(label/set-text (:: self :LabelHandle) (godot-num->str bx))))

@@ -21,7 +21,7 @@
 
 (defn _process [delta : float]
   (let [self  (node/self)
-        pos   (node/get-position self)
-        vy    (godot-prop-get-f "vy")
-        new-y (+ (node/vec2-y pos) (* vy delta))]
-    (node/set-position self (godot-vec2 (node/vec2-x pos) new-y))))
+		pos   (node/get-position self)
+		vy    (godot-prop-get-f "vy")
+		new-y (+ (node/vec2-y pos) (* vy delta))]
+	(node/set-position self (godot-vec2 (node/vec2-x pos) new-y))))

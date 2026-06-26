@@ -10,9 +10,12 @@
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
+#include <memory>
 #include <vector>
 
 struct TuriEnv;
+
+namespace godot { namespace aot { class AotImage; } }
 
 namespace godot {
 
@@ -81,6 +84,11 @@ public:
     // --- Access for TurmericInstance dispatch ---
     TuriEnv *get_turi_env() const { return turi_env; }
 
+    // AOT image accessor for cb_call. Returns nullptr when AOT mode is off
+    // or the build/load failed; the caller falls back to interpreter
+    // dispatch on null.
+    const aot::AotImage *get_aot_image() const { return aot_image_.get(); }
+
     // --- G2 :exports ---
     // Called by the `godot-export` native during _reload. Idempotent across
     // reloads because clear_exports() runs first.
@@ -103,6 +111,14 @@ private:
     TuriEnv                *turi_env = nullptr;
     std::vector<ExportDecl> exports;
     std::vector<SignalDecl> signals;
+
+    // AOT image for this script, built on reload when AOT mode is on
+    // (currently gated by the TURMERIC_GODOT_AOT=1 env var). Owns the
+    // dlopen handle; the previous-generation image is dropped before a
+    // new one is loaded so handle lifetimes never overlap. A3 will
+    // consult this for cb_call dispatch; today it only proves the
+    // build+load pipeline works.
+    std::unique_ptr<aot::AotImage> aot_image_;
 };
 
 } // namespace godot

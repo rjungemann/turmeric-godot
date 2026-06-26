@@ -45,6 +45,7 @@ import textwrap
 # style works without hand-writing each wrapper. Growing this list is
 # expected; keep it sorted.
 ALLOWLIST = sorted([
+    # G3 base (19) -- 2D gameplay surface paddle-pong-tur exercised.
     "AnimationPlayer",
     "Area2D",
     "CanvasItem",
@@ -64,6 +65,41 @@ ALLOWLIST = sorted([
     "StaticBody2D",
     "Timer",
     "Viewport",
+    # T3.A additions (~34) -- what a 2D action game actually needs.
+    "AudioStream",
+    "AudioStreamPlayer",
+    "AudioStreamPlayer2D",
+    "Camera2D",
+    "CharacterBody2D",
+    "Engine",
+    "Environment",
+    "FileAccess",
+    "FileSystemDock",
+    "GPUParticles2D",
+    "Image",
+    "ImageTexture",
+    "InputEvent",
+    "InputEventKey",
+    "InputEventMouseButton",
+    "Light2D",
+    "MeshInstance2D",
+    "NavigationAgent2D",
+    "NavigationRegion2D",
+    "OS",
+    "PackedScene",
+    "PhysicsServer2D",
+    "RandomNumberGenerator",
+    "Resource",
+    "ResourceLoader",
+    "Shader",
+    "ShaderMaterial",
+    "Skeleton2D",
+    "TileMap",
+    "TileMapLayer",
+    "Texture2D",
+    "Tween",
+    "Window",
+    "WorldBoundaryShape2D",
 ])
 
 # Method names provided by the curated prelude on the Node hierarchy.
@@ -98,14 +134,39 @@ SCALAR_TYPES = {
     "NodePath":   ":cstr",
 }
 
+# T2.A -- arena handle types declared in bridge/prelude.cpp. JSON method
+# args / returns that name one of these get the matching defopaque
+# instead of falling through to bare :int. The call body still demotes
+# back to :int at the godot-call boundary (arg-type-checking of the
+# typed-native registry is deferred); the user-facing signature is the
+# honest one.
+ARENA_TYPES = {
+    "Vector2":     "Vec2Handle",
+    "Vector3":     "Vec3Handle",
+    "Color":       "ColorHandle",
+    "Rect2":       "Rect2Handle",
+    "Transform2D": "Transform2DHandle",
+    "Transform3D": "Transform3DHandle",
+    "Array":       "ArrayHandle",
+    "Dictionary":  "DictHandle",
+}
+
 
 def param_type(json_type: str) -> str:
     if json_type in SCALAR_TYPES:
         return SCALAR_TYPES[json_type]
-    # Everything else (Vector2/3, Color, Rect2, Transform2D/3D, Array,
-    # Dictionary, Object, class names, enums, bitfields, typedarrays,
-    # PackedXArray, Variant) flows as an :int handle. The runtime
-    # marshaller is what actually distinguishes them.
+    # G6.2 follow-up -- allow-listed class type names get the matching
+    # <Class>Handle defopaque. JSON sometimes prefixes class types with
+    # "typedarray::" / "enum::" / "bitfield::"; those don't denote a
+    # specific Object handle and stay :int.
+    if json_type in ALLOWLIST:
+        return f":{handle_name(json_type)}"
+    # T2.A -- arena Variant types get their Handle defopaque too.
+    if json_type in ARENA_TYPES:
+        return f":{ARENA_TYPES[json_type]}"
+    # Everything else (PackedXxxArray, RID, NodePath-as-resource path,
+    # enum-prefixed, typedarray::, etc.) stays :int for now -- that's
+    # Tier 3 territory.
     return ":int"
 
 
@@ -150,13 +211,22 @@ def gen_wrapper(class_name: str, method: dict) -> str | None:
     wrap = f"{cls}/{kebab(mname)}"
     args = method.get("arguments", [])
 
-    param_list = ["self : int"]
+    # G6.2 follow-up -- self carries the class's defopaque handle.
+    self_type = f":{handle_name(class_name)}"
+    param_list = [f"self : {self_type.lstrip(':')}"]
+    # The godot-call body still wants raw :int handles, so emit ascriptions
+    # in the call args for any argument whose declared param type is a
+    # handle defopaque (any non-:int type at this point).
     call_args = []
+    self_expr = f"(:: self :int)"
     for a in args:
         n = safe_arg_name(a["name"])
         t = param_type(a["type"])
         param_list.append(f"{n} : {t.lstrip(':')}")
-        call_args.append(n)
+        if t.lstrip(":") not in ("int", "float", "bool", "cstr"):
+            call_args.append(f"(:: {n} :int)")
+        else:
+            call_args.append(n)
 
     # Codegen v2: pick a typed godot-call variant per JSON return type so
     # the wrapper carries an honest signature the elaborator can check.
@@ -164,12 +234,9 @@ def gen_wrapper(class_name: str, method: dict) -> str | None:
     #   float                             -> godot-call-f : float
     #   bool                              -> godot-call-b : bool
     #   String / StringName / NodePath    -> godot-call-c : cstr
-    #   other                             -> godot-call  : int (handles,
-    #                                                aggregates, Object,
-    #                                                Variant -- arena
-    #                                                handles or primitives
-    #                                                recognized at the use
-    #                                                site)
+    #   class-typed Object return         -> godot-call wrapped in (:: ... :CHandle)
+    #   other                             -> godot-call  : int
+    return_wrap = None  # (prefix, suffix) when an ascription wraps the body
     if "return_value" not in method:
         call_native = "godot-call-v"
         ret_anno    = ""
@@ -181,16 +248,140 @@ def gen_wrapper(class_name: str, method: dict) -> str | None:
             call_native, ret_anno = "godot-call-b", " : bool"
         elif rt in ("String", "StringName", "NodePath"):
             call_native, ret_anno = "godot-call-c", " : cstr"
+        elif rt in ALLOWLIST:
+            hname = handle_name(rt)
+            call_native, ret_anno = "godot-call", f" : {hname}"
+            return_wrap = (f"(:: ", f" :{hname})")
+        elif rt in ARENA_TYPES:
+            hname = ARENA_TYPES[rt]
+            call_native, ret_anno = "godot-call", f" : {hname}"
+            return_wrap = (f"(:: ", f" :{hname})")
         else:
             call_native, ret_anno = "godot-call", " : int"
 
     params_src    = " ".join(param_list)
     call_args_src = " ".join(call_args)
-    body = (f'({call_native} self "{mname}" {call_args_src})'
-            if call_args_src
-            else f'({call_native} self "{mname}")')
+    call_expr = (f'({call_native} {self_expr} "{mname}" {call_args_src})'
+                 if call_args_src
+                 else f'({call_native} {self_expr} "{mname}")')
+    body = (f"{return_wrap[0]}{call_expr}{return_wrap[1]}"
+            if return_wrap else call_expr)
 
     return f"(defn {wrap} [{params_src}]{ret_anno}\n  {body})"
+
+
+# G6.2 -- handle types the prelude already owns. Codegen must NOT redeclare
+# these (defopaque does not allow redefinition). Arena types live here too
+# (Vec2/Vec3/Color/Rect2) so the codegen leaves them alone.
+PRELUDE_HANDLE_NAMES = {
+    "NodeHandle",
+    "Vec2Handle", "Vec3Handle", "ColorHandle", "Rect2Handle",
+    # T2.A -- arena handles G6 deferred; declared in prelude.cpp now so
+    # the generator's per-class defopaque pass must not redeclare them.
+    "Transform2DHandle", "Transform3DHandle", "ArrayHandle", "DictHandle",
+}
+
+
+def handle_name(class_name: str) -> str:
+    return f"{class_name}Handle"
+
+
+def nearest_allowlisted_ancestor(class_name: str, classes_by_name: dict) -> str | None:
+    """Walk `inherits` from class_name; return the first ancestor in ALLOWLIST,
+    or None if the chain runs out without hitting one."""
+    c = classes_by_name.get(class_name)
+    if not c:
+        return None
+    parent = c.get("inherits")
+    while parent:
+        if parent in ALLOWLIST:
+            return parent
+        p = classes_by_name.get(parent)
+        if not p:
+            return None
+        parent = p.get("inherits")
+    return None
+
+
+def gen_handle_section(classes_by_name: dict) -> list[str]:
+    """G6.2 -- emit (defopaque <C>Handle :int) per allow-listed class plus
+    one up-coercion helper to the nearest allow-listed ancestor handle.
+
+    The prelude already declares NodeHandle and the arena handles
+    (Vec2Handle, etc.); skip those to avoid a defopaque redefinition.
+    Down-coercion stays explicit at the use site (`(:: h :Sprite2DHandle)`)
+    -- a runtime-checked variant is out of scope for v1."""
+    lines = [
+        ";; ---- G6.2 class-hierarchy defopaque handles ----",
+        ";; One (defopaque <Class>Handle :int) per allow-listed class.",
+        ";; Up-coercion to the nearest allow-listed ancestor is provided as",
+        ";; <class>-handle-><ancestor>-handle. NodeHandle and the arena",
+        ";; handles (Vec2Handle, ...) come from the hand-written prelude.",
+    ]
+    for cname in ALLOWLIST:
+        hname = handle_name(cname)
+        if hname not in PRELUDE_HANDLE_NAMES:
+            lines.append(f"(defopaque {hname} :int)")
+    lines.append("")
+    for cname in ALLOWLIST:
+        anc = nearest_allowlisted_ancestor(cname, classes_by_name)
+        if not anc:
+            continue
+        ch = handle_name(cname)
+        ah = handle_name(anc)
+        if ch == ah:
+            continue
+        fn = f"{class_prefix(cname)}-handle->{class_prefix(anc)}-handle"
+        lines.append(
+            f"(defn {fn} [h : {ch}] : {ah}\n"
+            f"  (:: h :{ah}))"
+        )
+    lines.append("")
+    # T2.C -- runtime-checked downcasts. One try-as-<class> per allow-listed
+    # class; consults Object::is_class via the curated `is-class?` prelude.
+    # On a successful check the input handle is ascribed to the target's
+    # <Class>Handle; on failure the result is a wrapped-0 sentinel that
+    # the caller compares with `(= (:: result :int) 0)`. Pairing this with
+    # the existing up-coercion helpers gives a checked widening + checked
+    # narrowing pair, with no Option<T> ergonomic burden on the user.
+    lines.append(";; ---- T2.C runtime-checked downcasts ----")
+    lines.append(";; (try-as-<class> h) :: int -> <Class>Handle")
+    lines.append(";;   Returns the ascribed handle when h IS-A <Class>, or")
+    lines.append(";;   (:: 0 :<Class>Handle) -- compare with (= (:: r :int) 0).")
+    for cname in ALLOWLIST:
+        hname = handle_name(cname)
+        fn = f"try-as-{class_prefix(cname)}"
+        lines.append(
+            f"(defn {fn} [h : int] : {hname}\n"
+            f"  (if (is-class? h \"{cname}\")\n"
+            f"    (:: h :{hname})\n"
+            f"    (:: 0 :{hname})))"
+        )
+    lines.append("")
+    return lines
+
+
+def gen_signal_wrapper(class_name: str, signal: dict) -> str:
+    """G6.1 -- emit a typed (classname/on-SIGNAL) wrapper.
+
+    The handler parameter is typed `(fn [argtypes...] void)`, so a
+    wrong-arity or wrong-type closure at the call site is `TUR-E0001`
+    at elaboration time instead of a silent runtime no-op.
+    """
+    sname = signal["name"]
+    cls   = class_prefix(class_name)
+    wrap  = f"{cls}/on-{kebab(sname)}"
+    args  = signal.get("arguments", [])
+
+    # Build the (fn [argT1 argT2 ...] void) type expression. Strip the leading
+    # ':' that param_type returns -- inside `(fn [...] void)` arg types are
+    # bare type names, not annotated parameter slots.
+    arg_types = [param_type(a["type"]).lstrip(":") for a in args]
+    fn_type   = f"(fn [{' '.join(arg_types)}] void)" if arg_types else "(fn [] void)"
+
+    self_h = handle_name(class_name)
+    return (f"(defn {wrap} [self : {self_h} handler : {fn_type}] : void\n"
+            f'  (godot-connect-typed (:: self :int) "{sname}" handler))')
 
 
 def main():
@@ -210,7 +401,13 @@ def main():
     lines.append(f";; Allowlist: {', '.join(ALLOWLIST)}")
     lines.append("")
 
+    # G6.2 -- defopaque handles + up-coercion chain. Emitted before the
+    # per-class wrappers so the wrapper bodies (which still pass :int today)
+    # can be opt-in upgraded by user scripts.
+    lines.extend(gen_handle_section(classes_by_name))
+
     method_count = 0
+    signal_count = 0
     for cname in ALLOWLIST:
         c = classes_by_name.get(cname)
         if not c:
@@ -221,12 +418,20 @@ def main():
             w = gen_wrapper(cname, m)
             if w:
                 wrappers.append(w)
-        if not wrappers:
+        # G6.1 -- one (class/on-SIGNAL) wrapper per signal declared at this
+        # class. JSON records signals at their declaring class only; subclass
+        # consumers up-cast (see G6.2's coercion helpers).
+        signal_wrappers = [gen_signal_wrapper(cname, s) for s in c.get("signals", [])]
+        if not wrappers and not signal_wrappers:
             continue
-        lines.append(f";; ---- {cname} ({len(wrappers)} methods) ----")
+        lines.append(f";; ---- {cname} "
+                     f"({len(wrappers)} methods, "
+                     f"{len(signal_wrappers)} signals) ----")
         lines.extend(wrappers)
+        lines.extend(signal_wrappers)
         lines.append("")
         method_count += len(wrappers)
+        signal_count += len(signal_wrappers)
 
     source = "\n".join(lines)
 
@@ -236,7 +441,8 @@ def main():
         "// AUTO-GENERATED by tools/gen_godot_facade.py -- DO NOT EDIT.\n"
         "// Regenerate with: python3 tools/gen_godot_facade.py\n"
         "//\n"
-        f"// {len(ALLOWLIST)} classes, {method_count} wrappers.\n"
+        f"// {len(ALLOWLIST)} classes, {method_count} method wrappers, "
+        f"{signal_count} signal wrappers.\n"
         "//\n"
         "// The string is evaluated in every TurmericScript's TuriEnv\n"
         "// after the hand-written prelude. See bridge/prelude.{h,cpp}.\n\n"
@@ -251,7 +457,8 @@ def main():
         f.write(source)
         f.write(footer)
 
-    print(f"wrote {out_path}: {len(ALLOWLIST)} classes, {method_count} wrappers")
+    print(f"wrote {out_path}: {len(ALLOWLIST)} classes, "
+          f"{method_count} methods, {signal_count} signals")
 
 
 if __name__ == "__main__":

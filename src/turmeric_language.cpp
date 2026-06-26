@@ -6,6 +6,9 @@
 #include "bridge/prelude.h"
 #include "bridge/generated_facade.h"
 
+#include "aot/aot_mode.h"
+
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 #include <godot_cpp/classes/object.hpp>
@@ -247,6 +250,37 @@ static Variant::Type tg_parse_export_type(const char *t) {
     if (!std::strcmp(t, "color"))   return Variant::COLOR;
     if (!std::strcmp(t, "rect2"))   return Variant::RECT2;
     if (!std::strcmp(t, "object"))  return Variant::OBJECT;
+    // T2.E -- the typed defopaque names emitted by the generator's
+    // ARENA_TYPES / per-class hierarchy. Accepting them lets users write
+    // `(defgodot-export start : Vec2Handle (node/vec2 0.0 0.0))` in the
+    // block surface; the macro stringifies the type symbol, and this is
+    // where that string lands. The runtime treatment is the same as
+    // for the lowercase aliases above.
+    if (!std::strcmp(t, "Vec2Handle"))   return Variant::VECTOR2;
+    if (!std::strcmp(t, "Vec3Handle"))   return Variant::VECTOR3;
+    if (!std::strcmp(t, "ColorHandle"))  return Variant::COLOR;
+    if (!std::strcmp(t, "Rect2Handle"))  return Variant::RECT2;
+    // Class handles (NodeHandle, Node2DHandle, Sprite2DHandle, ...) all
+    // land as OBJECT for the inspector. We accept anything matching the
+    // `<X>Handle` suffix on the assumption that the X is an ALLOWLIST'd
+    // class name; the inspector just sees a typed Object slot either way.
+    // Transform2DHandle / Transform3DHandle / ArrayHandle / DictHandle
+    // intentionally fall through -- those need arena builders before they
+    // can be used as inspector defaults (deferred T2.E follow-up).
+    {
+        size_t len = std::strlen(t);
+        const char *suffix = "Handle";
+        size_t slen = std::strlen(suffix);
+        if (len > slen && !std::memcmp(t + len - slen, suffix, slen)) {
+            // Exclude the arena Handle types we have not wired builders for.
+            if (std::strcmp(t, "Transform2DHandle") &&
+                std::strcmp(t, "Transform3DHandle") &&
+                std::strcmp(t, "ArrayHandle") &&
+                std::strcmp(t, "DictHandle")) {
+                return Variant::OBJECT;
+            }
+        }
+    }
     return Variant::NIL;
 }
 
@@ -603,7 +637,8 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native      ("godot-self",       tg_native_godot_self,    nullptr);                // :int Object handle
     turi_register_default_native      ("godot-singleton",  tg_native_godot_singleton, nullptr);              // :int Object handle
     turi_register_default_native_typed("godot-num->str",  tg_native_godot_num_to_str, nullptr, TUR_NRT_CSTR);
-    turi_register_default_native_typed("godot-connect",   tg_native_godot_connect,   nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("godot-connect",       tg_native_godot_connect,       nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("godot-connect-typed", tg_native_godot_connect_typed, nullptr, TUR_NRT_VOID);
     turi_register_default_native      ("godot-call",       tg_native_godot_call,    nullptr);                // dynamic
     // Codegen v2 typed variants -- gen_godot_facade.py picks the right one
     // per JSON return type so the generated wrapper declares an honest type.
@@ -659,10 +694,51 @@ void TurmericLanguage::smoke_test() {
     turi_env_free(env);
 }
 
+// A5 -- register the project settings the AOT path consults. We do this
+// from _init so the editor's Project Settings dialog discovers them on
+// first run; the settings persist into project.godot only after the user
+// edits a value, which matches how other engines surface their hooks
+// (`turmeric/...` always shows up under Advanced).
+static void register_project_settings() {
+    ProjectSettings *ps = ProjectSettings::get_singleton();
+    if (!ps) return;
+
+    // turmeric/execution_mode -- "interpreter" (default) | "aot"
+    {
+        const String key = String("turmeric/execution_mode");
+        if (!ps->has_setting(key)) {
+            ps->set_setting(key, Variant(String("interpreter")));
+        }
+        ps->set_initial_value(key, Variant(String("interpreter")));
+        Dictionary info;
+        info["name"]        = key;
+        info["type"]        = (int)Variant::STRING;
+        info["hint"]        = 2; // PROPERTY_HINT_ENUM
+        info["hint_string"] = String("interpreter,aot");
+        ps->add_property_info(info);
+    }
+
+    // turmeric/tur_binary -- override for `tur` lookup; blank uses PATH
+    {
+        const String key = String("turmeric/tur_binary");
+        if (!ps->has_setting(key)) {
+            ps->set_setting(key, Variant(String("")));
+        }
+        ps->set_initial_value(key, Variant(String("")));
+        Dictionary info;
+        info["name"]        = key;
+        info["type"]        = (int)Variant::STRING;
+        info["hint"]        = 14; // PROPERTY_HINT_GLOBAL_FILE
+        info["hint_string"] = String("");
+        ps->add_property_info(info);
+    }
+}
+
 void TurmericLanguage::_init() {
     TG_LOG("_init");
     init_turi();
     smoke_test();
+    register_project_settings();
 }
 
 void TurmericLanguage::_finish() {

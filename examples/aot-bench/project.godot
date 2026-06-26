@@ -1,0 +1,30 @@
+; aot-bench project -- microbenchmark from the godot-binding-aot-plan.
+;
+; Drive it headless:
+;
+;   # Interpreter baseline
+;   /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --quit
+;
+;   # AOT mode (one-off env override)
+;   TURMERIC_GODOT_AOT=1 /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --quit
+;
+;   # OR set `turmeric/execution_mode = "aot"` below and rerun without env.
+;
+; main.gd is a SceneTree script (no main scene required): it loads bench.tur,
+; attaches it to a node, calls hot(...) one million times, prints wall time,
+; and quits. Pass it via --script:
+;
+;   ... --headless --path examples/aot-bench --script res://main.gd
+
+config_version=5
+
+[application]
+
+config/name="turmeric-godot AOT bench"
+config/features=PackedStringArray("4.3", "Forward Plus")
+
+[turmeric]
+
+; Default: interpreter. Flip to "aot" for the comparison run. The env var
+; TURMERIC_GODOT_AOT=1 overrides this regardless of the setting.
+execution_mode="interpreter"

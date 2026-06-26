@@ -20,6 +20,29 @@ extern "C" {
 #include "bridge/prelude.h"
 #include "bridge/generated_facade.h"
 
+#include "aot/aot_cache.h"
+#include "aot/aot_image.h"
+#include "aot/aot_metadata.h"
+#include "aot/aot_mode.h"
+
+#include <godot_cpp/classes/project_settings.hpp>
+#include <cstdlib>
+#include <sys/stat.h>
+
+namespace {
+inline bool aot_path_is_file(const std::string &p) {
+    struct stat st;
+    return ::stat(p.c_str(), &st) == 0 && S_ISREG(st.st_mode);
+}
+
+// Mirror script_diag_sink's prefix shape so AOT failures attribute to the
+// right script in Godot's Output panel instead of looking like global
+// extension noise. `path` is the script's res:// (or "<inline>") path.
+inline godot::String aot_diag_prefix(const godot::String &path) {
+    return godot::String("[turmeric ") + path + godot::String(" AOT] ");
+}
+} // namespace
+
 namespace godot {
 
 static TurmericLanguage *get_lang() {
@@ -120,6 +143,83 @@ Error TurmericScript::_reload(bool p_keep_state) {
         }
     }
 
+    // Phase A4 -- when AOT is on AND the cache slot for this exact source
+    // already holds a built library, manifest, AND export/signal metadata
+    // sidecar, skip the interpreter eval entirely. cb_call dispatches into
+    // the AOT image; the interp env is unused on this path beyond the
+    // builtin natives turi_env_new seeded.
+    //
+    // We still drop the prior generation before the probe so a failed
+    // fast-path doesn't leave us with two live handles when the slow path
+    // also rebuilds.
+    CharString src_utf8_early = source_code.utf8();
+    const aot::ExecutionMode mode = aot::resolve_execution_mode(
+        src_utf8_early.get_data(), (size_t)src_utf8_early.length());
+    const bool aot_enabled = (mode == aot::ExecutionMode::Aot) &&
+                              !get_path().is_empty();
+    aot_image_.reset();
+
+    const String aot_prefix = aot_diag_prefix(
+        get_path().is_empty() ? String("<inline>") : get_path());
+
+    if (aot_enabled && !source_code.is_empty()) {
+        ProjectSettings *ps = ProjectSettings::get_singleton();
+        String script_abs = ps ? ps->globalize_path(get_path()) : get_path();
+        String project_abs = ps ? ps->globalize_path(String("res://")) : String();
+        CharString project_cs = project_abs.utf8();
+        CharString script_cs  = script_abs.utf8();
+        const char *src_ptr = src_utf8_early.get_data();
+        size_t      src_len = (size_t)src_utf8_early.length();
+        std::string tur_bin = aot::resolve_tur_bin(aot::project_tur_binary_setting());
+
+        aot::BuildOutputs preds = aot::predict_outputs(
+            std::string(project_cs.get_data()),
+            std::string(script_cs.get_data()),
+            src_ptr, src_len, tur_bin);
+
+        if (aot_path_is_file(preds.lib_path) &&
+            aot_path_is_file(preds.manifest_path) &&
+            aot_path_is_file(preds.metadata_path)) {
+            std::vector<ExportDecl> ex;
+            std::vector<SignalDecl> sg;
+            std::string merr;
+            if (aot::read_metadata(preds.metadata_path, &ex, &sg, &merr)) {
+                std::string ierr;
+                auto image = aot::AotImage::load(preds.lib_path,
+                                                  preds.manifest_path, &ierr);
+                if (image) {
+                    for (auto &e : ex) add_export(e.name, e.type, e.default_value);
+                    for (auto &s : sg) add_signal(s.name, std::move(s.args));
+                    aot_image_ = std::move(image);
+                    loaded = true;
+                    UtilityFunctions::print(
+                        aot_prefix +
+                        String("fast-path: ") +
+                        String::num_int64((int64_t)aot_image_->n_exports()) +
+                        String(" exports + ") +
+                        String::num_int64((int64_t)ex.size()) +
+                        String(" inspector exports, ") +
+                        String::num_int64((int64_t)sg.size()) +
+                        String(" signals from ") +
+                        String(preds.lib_path.c_str()));
+                    return OK;
+                }
+                UtilityFunctions::printerr(
+                    aot_prefix +
+                    String("fast-path: image load failed (") +
+                    String(ierr.c_str()) +
+                    String("); falling through to interp eval"));
+            } else {
+                UtilityFunctions::printerr(
+                    aot_prefix +
+                    String("fast-path: metadata read failed (") +
+                    String(merr.c_str()) +
+                    String("); falling through to interp eval"));
+            }
+            // Fall through: the slow path will rebuild + rewrite metadata.
+        }
+    }
+
     // G3.b -- evaluate the baked-in node/... prelude before the user's
     // source so the curated facade (node/set-position, node/get-modulate,
     // ...) is in scope. Prelude failures are fatal: a broken prelude means
@@ -157,7 +257,7 @@ Error TurmericScript::_reload(bool p_keep_state) {
         return OK;
     }
 
-    CharString src_utf8 = source_code.utf8();
+    CharString src_utf8 = std::move(src_utf8_early);
     // G2 :exports — claim the TLS slot so `godot-export` natives invoked
     // from top-level forms know which script to register against. Restore
     // (not nullify) so nested reloads — should they ever exist — pop cleanly.
@@ -174,6 +274,58 @@ Error TurmericScript::_reload(bool p_keep_state) {
         return ERR_PARSE_ERROR;
     }
     loaded = true;
+
+    // Phase A1+A2+A4 -- slow path. The interp eval above has populated
+    // exports_ / signals_ through the godot-export / godot-signal natives.
+    // Now build (or pick up the cached) AOT image and persist an
+    // exports.metadata sidecar so future reloads with the same source
+    // bytes skip straight to the fast path above.
+    if (aot_enabled) {
+        ProjectSettings *ps = ProjectSettings::get_singleton();
+        String script_abs   = ps ? ps->globalize_path(get_path()) : get_path();
+        String project_abs  = ps ? ps->globalize_path(String("res://")) : String();
+        CharString project_cs = project_abs.utf8();
+        CharString script_cs  = script_abs.utf8();
+        const char *src_ptr  = src_utf8.get_data();
+        size_t      src_len  = (size_t)src_utf8.length();
+        std::string tur_bin  = aot::resolve_tur_bin(std::string());
+
+        aot::BuildOutputs outs;
+        aot::BuildError   berr;
+        bool ok = aot::ensure_built(std::string(project_cs.get_data()),
+                                     std::string(script_cs.get_data()),
+                                     src_ptr, src_len, tur_bin,
+                                     &outs, &berr);
+        if (!ok) {
+            UtilityFunctions::printerr(aot_prefix + String(berr.message.c_str()));
+        } else {
+            std::string ierr;
+            auto image = aot::AotImage::load(outs.lib_path, outs.manifest_path,
+                                              &ierr);
+            if (!image) {
+                UtilityFunctions::printerr(aot_prefix + String(ierr.c_str()));
+            } else {
+                aot_image_ = std::move(image);
+                // Persist export/signal decls so the next reload of the
+                // same source bytes hits the fast path. We write
+                // unconditionally on slow path -- a corrupted sidecar
+                // from a crashed editor would just force one more rebuild.
+                std::string werr;
+                if (!aot::write_metadata(outs.metadata_path, exports, signals, &werr)) {
+                    UtilityFunctions::printerr(
+                        aot_prefix + String("metadata write failed: ") +
+                        String(werr.c_str()));
+                }
+                UtilityFunctions::print(
+                    aot_prefix + String("loaded ") +
+                    String::num_int64((int64_t)aot_image_->n_exports()) +
+                    String(" exports from ") +
+                    String(outs.lib_path.c_str()) +
+                    (outs.cache_hit ? String(" (cache hit)") : String(" (built)")));
+            }
+        }
+    }
+
     return OK;
 }
 

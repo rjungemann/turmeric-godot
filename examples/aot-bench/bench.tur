@@ -1,0 +1,20 @@
+;; aot-bench/bench.tur -- the hot path under the microscope.
+;;
+;; (defmodule ... (export ...)) is required for `hot` to land in
+;; `exports.manifest`: emit_exports_manifest skips defns where
+;; `is_exported` is false, and the only path that flips that bit is a
+;; defmodule's :exports list. Without this wrapper the AOT image loads
+;; with zero symbols and every cb_call("hot") falls back to interpreter.
+;;
+;; aot_dispatch.cpp falls back from find("_", name) to a bare-name scan
+;; over every module, so `bench/hot` resolves when Godot calls
+;; `instance.call("hot")`.
+
+(defmodule bench
+  (export _ready hot)
+
+  (defn _ready []
+    (godot-println "[aot-bench] _ready"))
+
+  (defn hot [x : int] : int
+    (+ x 1)))

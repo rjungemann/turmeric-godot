@@ -7,6 +7,22 @@ name: build
 #
 # Per-platform binaries land under examples/spike/bin/ and are uploaded
 # as workflow artifacts so a reviewer can grab a build off any commit.
+#
+# macOS code-signing (G5 polish):
+#   The macOS .dylib gets ad-hoc signed unconditionally so the build host
+#   does not produce a flagged "no signature" binary. For distribution,
+#   real signing + notarization runs ONLY when these secrets are set in
+#   the repo (Settings -> Secrets and variables -> Actions):
+#     APPLE_CERTIFICATE_BASE64   -- the Developer ID Application .p12 cert,
+#                                   base64-encoded (`base64 -i cert.p12 | pbcopy`)
+#     APPLE_CERTIFICATE_PASSWORD -- password for that .p12
+#     APPLE_KEYCHAIN_PASSWORD    -- a one-off password for the temp keychain
+#     APPLE_SIGNING_IDENTITY     -- e.g. "Developer ID Application: Acme (TEAMID)"
+#     APPLE_TEAM_ID              -- the 10-character team id
+#     APPLE_NOTARY_USER          -- Apple ID (email)
+#     APPLE_NOTARY_PASSWORD      -- app-specific password from appleid.apple.com
+#   When unset, the signing + notarization steps no-op and the build still
+#   succeeds; the artifact ships ad-hoc signed.
 
 on:
   push:
@@ -70,6 +86,64 @@ jobs:
 
       - name: Build GDExtension (template_release)
         run: python -m SCons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=template_release -j2
+
+      # macOS-only: ad-hoc sign so the build host doesn't leave the dylib
+      # flagged as "unsigned." Cheap, always runs, no secrets required.
+      # Distribution-grade signing is the next step below.
+      - name: Ad-hoc sign macOS dylib
+        if: matrix.platform == 'macos'
+        run: |
+          find examples/spike/bin -name '*.dylib' -print0 | \
+            xargs -0 -I{} codesign --force --sign - --timestamp=none {}
+
+      # Distribution-grade signing + notarization. Gated on the certificate
+      # secret -- when unset (the common PR case) the step is skipped.
+      - name: Sign and notarize macOS dylib
+        if: matrix.platform == 'macos' && env.APPLE_CERTIFICATE_BASE64 != ''
+        env:
+          APPLE_CERTIFICATE_BASE64:   ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_KEYCHAIN_PASSWORD:    ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+          APPLE_SIGNING_IDENTITY:     ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID:              ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_NOTARY_USER:          ${{ secrets.APPLE_NOTARY_USER }}
+          APPLE_NOTARY_PASSWORD:      ${{ secrets.APPLE_NOTARY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # 1. Build a temp keychain and import the .p12.
+          KC="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$APPLE_KEYCHAIN_PASSWORD" "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | xargs)
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" \
+            -k "$KC" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k "$APPLE_KEYCHAIN_PASSWORD" "$KC"
+
+          # 2. Sign every .dylib with timestamping + hardened runtime
+          # (notarization requires both).
+          find examples/spike/bin -name '*.dylib' -print0 | while IFS= read -r -d '' DYLIB; do
+            codesign --force --options runtime --timestamp \
+              --sign "$APPLE_SIGNING_IDENTITY" "$DYLIB"
+            codesign --verify --strict --verbose=2 "$DYLIB"
+          done
+
+          # 3. Notarize. .dylibs are notarized inside a zip envelope.
+          ZIP="$RUNNER_TEMP/notarize.zip"
+          (cd examples/spike/bin && zip -r "$ZIP" . -i '*.dylib')
+          xcrun notarytool submit "$ZIP" \
+            --apple-id "$APPLE_NOTARY_USER" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_NOTARY_PASSWORD" \
+            --wait
+          # .dylibs (as opposed to .app bundles) cannot be stapled; gatekeeper
+          # consults the notarization log online instead. No `stapler` step.
+
+          # 4. Tear the temp keychain down.
+          security delete-keychain "$KC"
 
       - name: Upload binaries
         uses: actions/upload-artifact@v4

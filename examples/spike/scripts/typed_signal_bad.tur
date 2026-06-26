@@ -1,0 +1,10 @@
+;; G6.1 negative case -- the closure has arity 1 but Timer.timeout is
+;; nullary. The elaborator must reject this at script load (TUR-E0001),
+;; not silently no-op at runtime.
+
+(defn _ready []
+  (let [self  (node/self)
+        timer (godot-call self "get_node" "../Beat")]
+    (timer/on-timeout (:: timer :TimerHandle)
+      (fn [bogus : int]
+        (godot-call-v (node/self) "set_name" "should-not-load")))))

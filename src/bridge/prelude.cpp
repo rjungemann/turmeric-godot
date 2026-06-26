@@ -30,6 +30,15 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 (defopaque Vec3Handle :int)
 (defopaque ColorHandle :int)
 (defopaque Rect2Handle :int)
+;; T2.A -- arena handles G6 deferred. Same defopaque-wrapped-:int shape
+;; as the existing four; the runtime value is still an arena tag in the
+;; low 62 bits + the high arena-handle bit. Promoting them lets the
+;; generator's arena-typed mapping (T2.A.3) emit honest signatures
+;; instead of falling through to bare :int.
+(defopaque Transform2DHandle :int)
+(defopaque Transform3DHandle :int)
+(defopaque ArrayHandle       :int)
+(defopaque DictHandle        :int)
 
 (defn nh->int [h : NodeHandle] : int (:: h :int))
 (defn int->nh [i : int] : NodeHandle (:: i :NodeHandle))
@@ -37,27 +46,37 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 (defn int->vec2h [i : int] : Vec2Handle (:: i :Vec2Handle))
 
 ;; --- Builders ---------------------------------------------------------------
-(defn node/vec2 [x : float y : float] : int (godot-vec2 x y))
-(defn node/vec3 [x : float y : float z : float] : int (godot-vec3 x y z))
-(defn node/color [r : float g : float b : float a : float] : int
-  (godot-color r g b a))
-(defn node/rect2 [x : float y : float w : float h : float] : int
-  (godot-rect2 x y w h))
+;; T2.A -- builders now return the arena Handle newtype rather than bare
+;; :int. The untyped natives return :int (registry default); the ascription
+;; back to :Vec2Handle / etc. is the no-op cast that wraps the runtime
+;; arena tag in a nominally-distinct type at the type level.
+(defn node/vec2 [x : float y : float] : Vec2Handle
+  (:: (godot-vec2 x y) :Vec2Handle))
+(defn node/vec3 [x : float y : float z : float] : Vec3Handle
+  (:: (godot-vec3 x y z) :Vec3Handle))
+(defn node/color [r : float g : float b : float a : float] : ColorHandle
+  (:: (godot-color r g b a) :ColorHandle))
+(defn node/rect2 [x : float y : float w : float h : float] : Rect2Handle
+  (:: (godot-rect2 x y w h) :Rect2Handle))
 
-;; --- Component accessors (typed now that natives are typed) ----------------
-(defn node/vec2-x [v : int] : float (godot-vec2-x v))
-(defn node/vec2-y [v : int] : float (godot-vec2-y v))
-(defn node/vec3-x [v : int] : float (godot-vec3-x v))
-(defn node/vec3-y [v : int] : float (godot-vec3-y v))
-(defn node/vec3-z [v : int] : float (godot-vec3-z v))
-(defn node/color-r [c : int] : float (godot-color-r c))
-(defn node/color-g [c : int] : float (godot-color-g c))
-(defn node/color-b [c : int] : float (godot-color-b c))
-(defn node/color-a [c : int] : float (godot-color-a c))
-(defn node/rect2-x [r : int] : float (godot-rect2-x r))
-(defn node/rect2-y [r : int] : float (godot-rect2-y r))
-(defn node/rect2-w [r : int] : float (godot-rect2-w r))
-(defn node/rect2-h [r : int] : float (godot-rect2-h r))
+;; --- Component accessors (T2.A -- typed Handle inputs) ---------------------
+;; Each accessor takes the Handle newtype, demoting back to :int at the
+;; native-call boundary. The arg-typed-native pass (deferred per the
+;; typed-native-registration archive) makes the demotion required; if
+;; arg-type-checking lands later, the ascriptions become structural noops.
+(defn node/vec2-x [v : Vec2Handle] : float (godot-vec2-x (:: v :int)))
+(defn node/vec2-y [v : Vec2Handle] : float (godot-vec2-y (:: v :int)))
+(defn node/vec3-x [v : Vec3Handle] : float (godot-vec3-x (:: v :int)))
+(defn node/vec3-y [v : Vec3Handle] : float (godot-vec3-y (:: v :int)))
+(defn node/vec3-z [v : Vec3Handle] : float (godot-vec3-z (:: v :int)))
+(defn node/color-r [c : ColorHandle] : float (godot-color-r (:: c :int)))
+(defn node/color-g [c : ColorHandle] : float (godot-color-g (:: c :int)))
+(defn node/color-b [c : ColorHandle] : float (godot-color-b (:: c :int)))
+(defn node/color-a [c : ColorHandle] : float (godot-color-a (:: c :int)))
+(defn node/rect2-x [r : Rect2Handle] : float (godot-rect2-x (:: r :int)))
+(defn node/rect2-y [r : Rect2Handle] : float (godot-rect2-y (:: r :int)))
+(defn node/rect2-w [r : Rect2Handle] : float (godot-rect2-w (:: r :int)))
+(defn node/rect2-h [r : Rect2Handle] : float (godot-rect2-h (:: r :int)))
 
 ;; --- Self -------------------------------------------------------------------
 (defn node/self [] : int (godot-self))
@@ -75,24 +94,30 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
   (godot-call-b (godot-singleton "Input") "is_action_just_pressed" action))
 
 ;; --- Node2D position / scale -- pos is an arena vec2 handle ----------------
-(defn node/set-position [self : int pos : int]
-  (godot-call self "set_position" pos))
-(defn node/get-position [self : int] : int
-  (godot-call self "get_position"))
-(defn node/set-scale [self : int scale : int]
-  (godot-call self "set_scale" scale))
+;; T2.A -- typed pos/scale args + typed get-position return. self stays
+;; :int so the curated prelude composes with both raw (godot-self) and
+;; NodeHandle ascriptions; the generator's typed-self path lives in the
+;; per-class facade (node2d/set-position, ...) where the ancestor is
+;; CanvasItemHandle / Node2DHandle.
+(defn node/set-position [self : int pos : Vec2Handle]
+  (godot-call self "set_position" (:: pos :int)))
+(defn node/get-position [self : int] : Vec2Handle
+  (:: (godot-call self "get_position") :Vec2Handle))
+(defn node/set-scale [self : int scale : Vec2Handle]
+  (godot-call self "set_scale" (:: scale :int)))
 
 ;; --- CanvasItem modulate -- c is an arena color handle ---------------------
-(defn node/set-modulate [self : int c : int]
-  (godot-call self "set_modulate" c))
-(defn node/get-modulate [self : int] : int
-  (godot-call self "get_modulate"))
+(defn node/set-modulate [self : int c : ColorHandle]
+  (godot-call self "set_modulate" (:: c :int)))
+(defn node/get-modulate [self : int] : ColorHandle
+  (:: (godot-call self "get_modulate") :ColorHandle))
 
 ;; --- Node traversal --------------------------------------------------------
-;; Returns 0 (null) when the path doesn't resolve. Compare with (= h 0)
-;; because godot-call's :int return can't be narrowed to :bool statically.
-(defn node/get-node [self : int path : cstr] : int
-  (godot-call self "get_node" path))
+;; T2.B -- node/get-node returns a NodeHandle (the looked-up node).
+;; Comparison-with-null still needs the underlying :int -- ascribe back
+;; with (:: h :int) at the call site if you need (= h 0).
+(defn node/get-node [self : int path : cstr] : NodeHandle
+  (:: (godot-call self "get_node" path) :NodeHandle))
 (defn node/queue-free [self : int]
   (godot-call self "queue_free"))
 
@@ -107,6 +132,175 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; --- Dictionary helpers -- godot-dict-has now returns :bool, so the
 ;;     usual (if (dict-has? d k) ...) idiom works directly. ------------------
 (defn dict-has? [d : int key : cstr] : bool (godot-dict-has d key))
+
+;; --- T2.C: runtime-checked downcast --------------------------------------
+;; is-class? consults Object::is_class via the typed godot-call-b path.
+;; Pairs with the generated try-as-<class> helpers (bridge/generated_facade)
+;; to give scripts a runtime-checked narrowing without committing to a
+;; full Option<T> ergonomic. The generated helpers return the target
+;; Handle either populated or as a wrapped-0 sentinel; the standard idiom
+;; is `(if (= (:: result :int) 0) ... ...)`.
+(defn is-class? [h : int class-name : cstr] : bool
+  (godot-call-b h "is_class" class-name))
+
+;; --- G6.3 -- curated one-shot patterns -------------------------------------
+;; Patterns every gameplay script reaches for at least once. Pure prelude
+;; additions; no new natives. Each entry composes godot-call / godot-call-*
+;; or godot-connect-typed.
+
+;; SceneTree access. T2.B -- get-tree returns the SceneTree handle as
+;; the typed defopaque the generator already declares; internal callers
+;; demote with (:: t :int) at the godot-call boundary.
+(defn get-tree [] : SceneTreeHandle
+  (:: (godot-call (godot-self) "get_tree") :SceneTreeHandle))
+(defn tree/quit [] : void
+  (godot-call-v (:: (get-tree) :int) "quit"))
+(defn tree/get-root [] : NodeHandle
+  (:: (godot-call (:: (get-tree) :int) "get_root") :NodeHandle))
+(defn tree/change-scene-to-file [path : cstr] : void
+  (godot-call-v (:: (get-tree) :int) "change_scene_to_file" path))
+
+;; Timer one-shot creation -- common enough to deserve a helper. The
+;; handler is a closure value type-checked at the call site (G6.1).
+;; The returned handle is a SceneTreeTimer, which isn't in the
+;; allowlist, so it stays bare :int.
+(defn timer/one-shot [seconds : float handler : (fn [] void)] : int
+  (let [t (godot-call (:: (get-tree) :int) "create_timer" seconds)]
+    (godot-connect-typed t "timeout" handler)
+    t))
+
+;; Engine.
+(defn engine [] : int (godot-singleton "Engine"))
+(defn engine/get-frames-drawn [] : int
+  (godot-call (engine) "get_frames_drawn"))
+(defn engine/get-process-fps [] : float
+  (godot-call-f (engine) "get_frames_per_second"))
+
+;; OS (Time provides the ticks; OS lacks a millisecond clock in 4.3).
+(defn os [] : int (godot-singleton "OS"))
+(defn time [] : int (godot-singleton "Time"))
+(defn os/get-system-time-msecs [] : int
+  (godot-call (time) "get_ticks_msec"))
+
+;; Logging that isn't just godot-println. Both route through godot-println
+;; with a tag prefix for v1; a real (push_warning / push_error) path can
+;; replace these once UtilityFunctions exposure lands as a native.
+(defn log/info [msg : cstr] : void
+  (godot-println msg))
+(defn log/error [msg : cstr] : void
+  (godot-println msg))
+
+;; Compose timer/one-shot for the deferred-call pattern. The timer
+;; handle is the typed callee target only; the script side only cares
+;; about the closure firing once `seconds` later, so godot-connect-typed
+;; (TUR_NRT_VOID) is the tail expression.
+(defn after [seconds : float handler : (fn [] void)] : void
+  (godot-connect-typed
+    (godot-call (:: (get-tree) :int) "create_timer" seconds)
+    "timeout"
+    handler))
+
+;; --- G7 -- defgodot-script ergonomic shell --------------------------------
+;; Plan-shape surface (see docs/upcoming/v1/godot-language-binding-plan.md
+;; in the turmeric repo for the wider design):
+;;
+;;   (defgodot-script Player :extends Node2D
+;;     :exports ((speed   : float 200.0)
+;;               (counter : int   7))
+;;     :signals (pinged
+;;               (hit (damage : int) (impulse : float))
+;;               died)
+;;     (defn _ready [] ...))
+;;
+;; ClassName is informational; Godot's base-class typing comes from
+;; set_script() being attached to a node of the right type. :extends
+;; is accepted and ignored for v1 -- it documents intent without yet
+;; constraining the attachment.
+;;
+;; defgodot-script walks its body in order. Each form is one of:
+;;   - the keyword :extends followed by a parent-class symbol (ignored)
+;;   - the keyword :exports followed by a list of (name : type default)
+;;     decls -- each lowered to (godot-export "name" "type" default)
+;;   - the keyword :signals followed by a list of signal decls -- each
+;;     a bare symbol (zero-arg) or (name (arg : type) ...) (flat-arg).
+;;     Each lowered to (godot-signal "name" "arg1" "type1" ...)
+;;   - any other form passes through unchanged.
+;;
+;; Per-decl call shapes (defgodot-export / defgodot-signal) are kept
+;; available too, for users who want to spell things out without the
+;; block surface.
+;;
+;; Backed by type-ann-inner / type-ann? CT primitives and the
+;; ^syntax param marker; see docs/archive/ in the turmeric repo.
+
+;; --- Per-decl exports (variadic over (name : type default)) ---------------
+(defmacro defgodot-export [& ^syntax decls]
+  (if (empty? decls)
+    `(do)
+    (let [d        (first decls)
+          name-sym (first d)
+          type-ann (first (rest d))
+          type-sym (type-ann-inner type-ann)
+          default  (first (rest (rest d)))
+          name-str (symbol-name name-sym)
+          type-str (symbol-name type-sym)]
+      `(do
+         (godot-export ~name-str ~type-str ~default)
+         (defgodot-export ~@(rest decls))))))
+
+;; --- Per-decl signals (variadic over bare names or (name (arg : type)...))-
+;; tg-signal-acc__ folds a signal's (arg : type) decls into the godot-signal
+;; native's flat string-pair-after-name signature, using an accumulator
+;; threaded through self-re-expansion. The ~@acc splice carries the
+;; growing arg-list across passes.
+(defmacro tg-signal-acc__ [name-str ^syntax acc & ^syntax arg-decls]
+  (if (empty? arg-decls)
+    `(godot-signal ~name-str ~@acc)
+    (let [d        (first arg-decls)
+          arg-name (symbol-name (first d))
+          arg-type (symbol-name (type-ann-inner (first (rest d))))]
+      `(tg-signal-acc__ ~name-str (~@acc ~arg-name ~arg-type)
+                        ~@(rest arg-decls)))))
+
+(defmacro tg-signal-one__ [^syntax decl]
+  (let [name-str (symbol-name (first decl))]
+    `(tg-signal-acc__ ~name-str () ~@(rest decl))))
+
+(defmacro defgodot-signal [& ^syntax decls]
+  (if (empty? decls)
+    `(do)
+    (let [d (first decls)]
+      (if (list? d)
+        `(do (tg-signal-one__ ~d)
+             (defgodot-signal ~@(rest decls)))
+        (let [name-str (symbol-name d)]
+          `(do (godot-signal ~name-str)
+               (defgodot-signal ~@(rest decls))))))))
+
+;; --- Body walker for the block surface ------------------------------------
+;; tg-script-walk__ scans the body in order, accumulating a list of
+;; forms to emit. Keyword markers (:extends, :exports, :signals)
+;; consume the following form as their payload; everything else
+;; passes through. The accumulator is spliced via ~@emits across
+;; self-re-expansions until the body is empty.
+(defmacro tg-script-walk__ [^syntax emits & ^syntax body]
+  (if (empty? body)
+    `(do ~@emits)
+    (let [f (first body)]
+      (if (= f :extends)
+        `(tg-script-walk__ (~@emits) ~@(rest (rest body)))
+        (if (= f :exports)
+          `(tg-script-walk__
+              (~@emits (defgodot-export ~@(first (rest body))))
+              ~@(rest (rest body)))
+          (if (= f :signals)
+            `(tg-script-walk__
+                (~@emits (defgodot-signal ~@(first (rest body))))
+                ~@(rest (rest body)))
+            `(tg-script-walk__ (~@emits ~f) ~@(rest body))))))))
+
+(defmacro defgodot-script [^syntax _name & ^syntax body]
+  `(tg-script-walk__ () ~@body))
 )TURMERIC";
 
 } // namespace godot

@@ -1,0 +1,24 @@
+;; G6.2 -- generated class-hierarchy defopaque handles.
+;;
+;; Each allow-listed class has its own <C>Handle newtype, with an
+;; up-coercion to the nearest allow-listed ancestor. Down-coercion is
+;; explicit + unchecked via (:: h :ChildHandle) -- a runtime-checked
+;; variant is out of scope for v1.
+;;
+;; This script:
+;;   1. wraps (godot-self) into a Node2DHandle (the attach-time class is
+;;      Node2D; see handle_hierarchy.gd);
+;;   2. up-coerces to NodeHandle via the generated helper, hands that
+;;      to a NodeHandle-typed routine;
+;;   3. up-coerces further to Object via node-handle->object-handle and
+;;      back through int for the godot-call boundary.
+
+(defn rename-via-node [n : NodeHandle new-name : cstr] : void
+  (godot-call-v (:: n :int) "set_name" new-name))
+
+(defn _ready []
+  (let [self-2d (:: (godot-self) :Node2DHandle)
+        ;; Generated up-coercion: Node2DHandle -> CanvasItemHandle -> NodeHandle.
+        self-ci (node2d-handle->canvasitem-handle self-2d)
+        self-n  (canvasitem-handle->node-handle    self-ci)]
+    (rename-via-node self-n "handle-hierarchy-ok")))

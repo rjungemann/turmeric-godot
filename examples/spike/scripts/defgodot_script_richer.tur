@@ -1,0 +1,19 @@
+;; G7 -- defgodot-script with the richer (defgodot-export ...) /
+;; (defgodot-signal ...) sub-macros. Same observable behaviour as
+;; defgodot_script.tur, but the per-decl stringly-typed ceremony is
+;; lifted into the macros.
+
+(defgodot-script Subject
+  ;; --- exports (inspector-visible properties) ---
+  (defgodot-export (label-tag : string "ok-from-export")
+                   (counter   : int    7))
+  ;; --- signals (Node-dock visible) ---
+  (defgodot-signal pinged)
+  ;; --- methods ---
+  (defn _ready []
+    (let [tag (godot-prop-get-c "label-tag")
+          n   (godot-prop-get-i "counter")]
+      (godot-println tag)
+      (godot-println (godot-num->str n))
+      (emit-signal "pinged")
+      (godot-call-v (godot-self) "set_name" tag))))

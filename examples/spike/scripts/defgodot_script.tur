@@ -1,0 +1,21 @@
+;; G7 -- defgodot-script ergonomic shell (minimum-viable surface).
+;; The macro is a (do ...) wrapper; users write explicit
+;; (godot-export ...) / (godot-signal ...) calls inside its body.
+;; See docs/reported/defgodot-script-macro-vec-quote-semantics.md
+;; for the language-level work that would unlock the richer
+;; :exports / :signals vec-literal surface.
+
+(defgodot-script Subject
+  ;; --- exports (inspector-visible properties) ---
+  (godot-export "label-tag" "string" "ok-from-export")
+  (godot-export "counter"   "int"    7)
+  ;; --- signals (Node-dock visible) ---
+  (godot-signal "pinged")
+  ;; --- methods ---
+  (defn _ready []
+    (let [tag (godot-prop-get-c "label-tag")
+          n   (godot-prop-get-i "counter")]
+      (godot-println tag)
+      (godot-println (godot-num->str n))
+      (emit-signal "pinged")
+      (godot-call-v (godot-self) "set_name" tag))))

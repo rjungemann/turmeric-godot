@@ -2,6 +2,12 @@
 #include "variant_marshal.h"
 #include "../turmeric_instance.h"
 
+extern "C" {
+#include "turi/env.h"
+}
+
+#include <atomic>
+
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -59,6 +65,71 @@ TuriValue tg_native_godot_connect(TuriEnv *env, TuriValue *args, uint32_t n, voi
     if (err != 0 /* OK */) {
         UtilityFunctions::printerr(
             String("turmeric-godot: (godot-connect '") + String(args[1].as_cstr) +
+            String("') failed with error ") + String::num_int64((int64_t)err));
+    }
+    return turi_nil();
+}
+
+TuriValue tg_native_godot_connect_typed(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)ud;
+    // (godot-connect-typed SOURCE-OBJ SIGNAL-NAME HANDLER-CLOSURE)
+    if (n != 3 ||
+        args[0].tag != TURI_INT ||
+        args[1].tag != TURI_CSTR || !args[1].as_cstr ||
+        args[2].tag != TURI_CLOSURE || !args[2].as_closure) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect-typed SOURCE SIGNAL HANDLER) takes "
+            "(:int handle, :cstr, closure)");
+        return turi_nil();
+    }
+    if (variant_arena_is_handle(args[0].as_int)) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect-typed) SOURCE must be an Object "
+            "handle, not an arena value");
+        return turi_nil();
+    }
+    Object *source = (Object *)(intptr_t)args[0].as_int;
+    if (!source) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-connect-typed) SOURCE is null");
+        return turi_nil();
+    }
+    TurmericInstance *self = g_current_instance;
+    if (!self || !self->owner) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect-typed) called outside an instance "
+            "method; no `self` to bind the callable to");
+        return turi_nil();
+    }
+    if (!env) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect-typed) called without an env (internal bug)");
+        return turi_nil();
+    }
+    // Synthesise a unique method name. The closure is bound into the script
+    // env under this name; cb_call routes by name lookup, so Godot's Callable
+    // targeting this StringName on self->owner dispatches the closure.
+    //
+    // The counter is process-global; collisions across script reloads would
+    // only matter if the env survived the reload, which it does not.
+    static std::atomic<uint64_t> s_counter{0};
+    const uint64_t id = s_counter.fetch_add(1, std::memory_order_relaxed);
+    char synth[64];
+    std::snprintf(synth, sizeof(synth), "__tg_sig_%llu", (unsigned long long)id);
+    // turi_env_set stores the name pointer borrowed; copy into the env's
+    // value pool so the binding key outlives this stack frame.
+    char *synth_pooled = turi_val_strdup(env, synth);
+    if (!synth_pooled) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-connect-typed) OOM allocating synth name");
+        return turi_nil();
+    }
+    turi_env_set(env, synth_pooled, args[2]);
+
+    Callable cb(self->owner, StringName(synth_pooled));
+    int err = source->connect(StringName(args[1].as_cstr), cb);
+    if (err != 0 /* OK */) {
+        UtilityFunctions::printerr(
+            String("turmeric-godot: (godot-connect-typed '") + String(args[1].as_cstr) +
             String("') failed with error ") + String::num_int64((int64_t)err));
     }
     return turi_nil();

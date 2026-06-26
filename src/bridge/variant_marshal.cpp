@@ -4,6 +4,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <string>
+#include <deque>
 #include <vector>
 
 namespace godot {
@@ -55,7 +56,13 @@ Variant turi_to_variant_primitive(TuriValue v) {
 
 namespace {
 thread_local std::vector<Variant>     g_arena;
-thread_local std::vector<std::string> g_str_arena;
+// std::deque (not std::vector) so that the c_str() pointers returned
+// by string_arena_push() remain valid across subsequent pushes in the
+// same cb_call frame. Vector's reallocation on growth would dangle any
+// earlier-returned cstr -- the defgodot-script demo hit exactly this
+// hazard with two prop-get-c reads + a num->str in flight. Deque's
+// segmented storage gives stable element addresses.
+thread_local std::deque<std::string>  g_str_arena;
 } // namespace
 
 int64_t variant_arena_push(const Variant &v) {

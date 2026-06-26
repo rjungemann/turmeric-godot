@@ -1,0 +1,25 @@
+;; aot-bench-heavy/bench.tur -- T1.C of the AOT cleanup plan.
+;;
+;; Heavier body than aot-bench/bench.tur: hot() calls a private
+;; recursive step() that walks 50 closure frames per outer call. Each
+;; iteration does ~50 closure-walks in interp mode but ~50 direct C
+;; calls in AOT mode -- the slice the bench is designed to surface.
+;;
+;; step is NOT exported. The interp env still binds it under both
+;; `bench/step` and bare `step` (see src/turi/eval.c:6458-6517 in the
+;; turmeric repo); the AOT compiler links it statically into the same
+;; .so as hot, so the dlsym surface only needs (_ready, hot).
+
+(defmodule bench
+  (export _ready hot)
+
+  (defn step [n : int] : int
+    (if (= n 0)
+      0
+      (+ 1 (step (- n 1)))))
+
+  (defn _ready []
+    (godot-println "[aot-bench-heavy] _ready"))
+
+  (defn hot [x : int] : int
+    (+ x (step 50))))
