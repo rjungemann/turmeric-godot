@@ -10,6 +10,8 @@ extern "C" {
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/object.hpp>
+#include <godot_cpp/classes/resource.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
@@ -1245,6 +1247,54 @@ TuriValue tg_native_godot_call_pack_v(TuriEnv *env, TuriValue *args, uint32_t n,
     bool ok = false;
     (void)tg_call_pack_dispatch(args, n, &ok);
     return turi_nil();
+}
+
+// --- T4.D: preload --------------------------------------------------------
+
+namespace {
+// Process-lifetime cache keyed by absolute resource path. We hold a Ref<>
+// to keep the resource alive past the script's life span -- preload's
+// whole point is "loaded once, kept around." A WeakRef-style policy is a
+// later concern; the GDScript precedent is also strong-ref.
+//
+// thread_local is wrong here (Godot's main thread is the only Variant
+// thread anyway, and a process-lifetime cache should be process-wide);
+// not thread_local so two scripts that preload the same path share the
+// load.
+std::unordered_map<std::string, Ref<Resource>> g_preload_cache;
+} // namespace
+
+TuriValue tg_native_godot_preload(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1 || args[0].tag != TURI_CSTR || !args[0].as_cstr) {
+        return turi_error("(godot-preload PATH) takes one :cstr res:// path");
+    }
+    std::string key(args[0].as_cstr);
+    auto it = g_preload_cache.find(key);
+    if (it != g_preload_cache.end() && it->second.is_valid()) {
+        Object *o = it->second.ptr();
+        return turi_int((int64_t)(intptr_t)o);
+    }
+    String path(args[0].as_cstr);
+    ResourceLoader *rl = ResourceLoader::get_singleton();
+    if (!rl) {
+        return turi_error("(godot-preload) ResourceLoader singleton missing");
+    }
+    if (!rl->exists(path)) {
+        // The plan's compile-time check: a top-level (preload "...") in a
+        // script source fails fast at TurmericScript::_reload time, before
+        // any gameplay code runs.
+        std::string msg = "preload: missing resource '" + key + "'";
+        return turi_error(msg.c_str());
+    }
+    Ref<Resource> res = rl->load(path);
+    if (res.is_null()) {
+        std::string msg = "preload: load failed for '" + key + "'";
+        return turi_error(msg.c_str());
+    }
+    g_preload_cache[key] = res;
+    Object *o = res.ptr();
+    return turi_int((int64_t)(intptr_t)o);
 }
 
 } // namespace godot

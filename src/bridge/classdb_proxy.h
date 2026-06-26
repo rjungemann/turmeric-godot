@@ -208,6 +208,26 @@ TuriValue tg_native_godot_rid_valid (TuriEnv *env, TuriValue *args, uint32_t n, 
 TuriValue tg_native_godot_call_pack   (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_call_pack_v (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// --- T4.D: preload (compile-time-validated resource load) -----------------
+//
+// (godot-preload PATH)            -> :int Object handle (Resource subclass)
+//
+// PATH is a :cstr `res://...` path. The native:
+//   * verifies the path resolves to an existing file via
+//     ResourceLoader.exists() -- if not, returns TURI_ERROR with a clear
+//     "preload: missing resource ..." message;
+//   * loads the resource through ResourceLoader.load();
+//   * caches the resulting handle in a process-lifetime map keyed by
+//     PATH so subsequent (preload PATH) calls return the same handle
+//     without re-loading.
+//
+// Because TurmericScript::_reload evaluates the script source on every
+// reload, a top-level (preload ...) form (the GDScript-style usage) fails
+// fast at reload time -- the compile-time check the plan asks for. Nested
+// uses (inside a defn body) defer the check until the form actually runs,
+// which is the same caveat any Turmeric form has.
+TuriValue tg_native_godot_preload (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 } // namespace godot
 
 #endif

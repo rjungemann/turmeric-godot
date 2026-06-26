@@ -303,6 +303,26 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
     "timeout"
     handler))
 
+;; --- T4.D: preload (compile-time-validated resource load) ---------------
+;;
+;; (preload "res://things/sword.tscn") returns a ResourceHandle pointing
+;; at the loaded resource. The actual file existence check happens inside
+;; (godot-preload ...) at native-call time -- which, for a top-level
+;; (preload ...) form, IS the script's load-time (TurmericScript::_reload
+;; evaluates the source on every reload). A typo'd path fails fast at
+;; reload with `preload: missing resource '...'` before any gameplay runs.
+;;
+;; The loaded resource is cached by path for the process lifetime, so a
+;; defn that calls (preload ...) repeatedly only loads on the first call;
+;; later calls return the cached handle without disk IO.
+;;
+;; The return type is ResourceHandle -- the abstract Resource. Down-cast
+;; with `(:: (preload ...) :PackedSceneHandle)` etc. at the use site if
+;; the concrete subclass matters; both PackedScene and Image are
+;; allowlisted so their Handle defopaques exist.
+(defn preload [path : cstr] : ResourceHandle
+  (:: (godot-preload path) :ResourceHandle))
+
 ;; --- T4.A starter: cross-script calls via Godot Callable -----------------
 ;;
 ;; Each .tur script AOT-compiles to its own dlopen'd shared library, so

@@ -719,6 +719,8 @@ void TurmericLanguage::init_turi() {
     // T3.E -- generic variadic dispatch (callv with a trailing ArrayHandle).
     turi_register_default_native      ("godot-call-pack",             tg_native_godot_call_pack,            nullptr);                  // dynamic
     turi_register_default_native_typed("godot-call-pack-v",           tg_native_godot_call_pack_v,          nullptr, TUR_NRT_VOID);
+    // T4.D -- preload (compile-time-validated resource load).
+    turi_register_default_native_typed("godot-preload",                tg_native_godot_preload,              nullptr, TUR_NRT_INT);     // Object handle
 }
 
 void TurmericLanguage::shutdown_turi() {
