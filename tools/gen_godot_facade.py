@@ -487,6 +487,45 @@ def gen_signal_wrapper(class_name: str, signal: dict) -> str:
             f'  (godot-connect-typed (:: self :int) "{sname}" handler))')
 
 
+def gen_emit_signal_wrapper(class_name: str, signal: dict) -> str:
+    """T4.C -- typed (classname/emit-SIGNAL) wrapper, the emit-side
+    counterpart of gen_signal_wrapper.
+
+    Each signal argument lands as a typed parameter on the wrapper, so a
+    caller that emits the wrong payload shape is TUR-E0001 at elaboration
+    instead of a silent runtime drop. The body routes through
+    (godot-call-v ... "emit_signal" "<sname>" args...) -- the same
+    Object::emit_signal path the curated prelude (emit-signal NAME ...)
+    uses, but addressable on any Object handle rather than the current
+    instance only.
+    """
+    sname = signal["name"]
+    cls   = class_prefix(class_name)
+    wrap  = f"{cls}/emit-{kebab(sname)}"
+    args  = signal.get("arguments", [])
+
+    self_h = handle_name(class_name)
+    param_list = [f"self : {self_h}"]
+    call_args  = []
+    for a in args:
+        n = safe_arg_name(a["name"])
+        t = param_type(a["type"])
+        param_list.append(f"{n} : {t.lstrip(':')}")
+        # Same ascription discipline as gen_wrapper: handle-typed args go
+        # through (:: arg :int) at the godot-call boundary; primitives
+        # pass straight through.
+        if t.lstrip(":") not in ("int", "float", "bool", "cstr"):
+            call_args.append(f"(:: {n} :int)")
+        else:
+            call_args.append(n)
+
+    args_src = " ".join(call_args)
+    body = (f'(godot-call-v (:: self :int) "emit_signal" "{sname}" {args_src})'
+            if args_src
+            else f'(godot-call-v (:: self :int) "emit_signal" "{sname}")')
+    return f"(defn {wrap} [{' '.join(param_list)}] : void\n  {body})"
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     repo = os.path.dirname(here)
@@ -529,17 +568,27 @@ def main():
         # G6.1 -- one (class/on-SIGNAL) wrapper per signal declared at this
         # class. JSON records signals at their declaring class only; subclass
         # consumers up-cast (see G6.2's coercion helpers).
-        signal_wrappers = [gen_signal_wrapper(cname, s) for s in c.get("signals", [])]
+        # T4.C -- emit-side companion: per-signal (class/emit-SIGNAL) wrapper
+        # paired with the connect-side one. Lets a caller emit a typed payload
+        # on any Object handle instead of only on the current instance.
+        signal_wrappers = []
+        for s in c.get("signals", []):
+            signal_wrappers.append(gen_signal_wrapper(cname, s))
+            signal_wrappers.append(gen_emit_signal_wrapper(cname, s))
         if not wrappers and not signal_wrappers:
             continue
+        # signal_wrappers contains both connect-side and emit-side; the
+        # cls/(N signals) count reports the JSON signal count, not the
+        # wrapper count.
+        n_signals = len(c.get("signals", []))
         lines.append(f";; ---- {cname} "
                      f"({len(wrappers)} methods, "
-                     f"{len(signal_wrappers)} signals) ----")
+                     f"{n_signals} signals) ----")
         lines.extend(wrappers)
         lines.extend(signal_wrappers)
         lines.append("")
         method_count += len(wrappers)
-        signal_count += len(signal_wrappers)
+        signal_count += n_signals
 
     source = "\n".join(lines)
 

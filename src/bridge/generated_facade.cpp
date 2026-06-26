@@ -484,8 +484,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-c (:: self :int) "get_root"))
 (defn animationplayer/on-current-animation-changed [self : AnimationPlayerHandle handler : (fn [cstr] void)] : void
   (godot-connect-typed (:: self :int) "current_animation_changed" handler))
+(defn animationplayer/emit-current-animation-changed [self : AnimationPlayerHandle name : cstr] : void
+  (godot-call-v (:: self :int) "emit_signal" "current_animation_changed" name))
 (defn animationplayer/on-animation-changed [self : AnimationPlayerHandle handler : (fn [cstr cstr] void)] : void
   (godot-connect-typed (:: self :int) "animation_changed" handler))
+(defn animationplayer/emit-animation-changed [self : AnimationPlayerHandle old-name : cstr new-name : cstr] : void
+  (godot-call-v (:: self :int) "emit_signal" "animation_changed" old-name new-name))
 
 ;; ---- Area2D (36 methods, 8 signals) ----
 (defn area2d/set-gravity-space-override-mode [self : Area2DHandle space-override-mode : int]
@@ -562,20 +566,36 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (:: self :int) "is_overriding_audio_bus"))
 (defn area2d/on-body-shape-entered [self : Area2DHandle handler : (fn [RidHandle Node2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_entered" handler))
+(defn area2d/emit-body-shape-entered [self : Area2DHandle body-rid : RidHandle body : Node2DHandle body-shape-index : int local-shape-index : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_shape_entered" (:: body-rid :int) (:: body :int) body-shape-index local-shape-index))
 (defn area2d/on-body-shape-exited [self : Area2DHandle handler : (fn [RidHandle Node2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_exited" handler))
+(defn area2d/emit-body-shape-exited [self : Area2DHandle body-rid : RidHandle body : Node2DHandle body-shape-index : int local-shape-index : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_shape_exited" (:: body-rid :int) (:: body :int) body-shape-index local-shape-index))
 (defn area2d/on-body-entered [self : Area2DHandle handler : (fn [Node2DHandle] void)] : void
   (godot-connect-typed (:: self :int) "body_entered" handler))
+(defn area2d/emit-body-entered [self : Area2DHandle body : Node2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_entered" (:: body :int)))
 (defn area2d/on-body-exited [self : Area2DHandle handler : (fn [Node2DHandle] void)] : void
   (godot-connect-typed (:: self :int) "body_exited" handler))
+(defn area2d/emit-body-exited [self : Area2DHandle body : Node2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_exited" (:: body :int)))
 (defn area2d/on-area-shape-entered [self : Area2DHandle handler : (fn [RidHandle Area2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "area_shape_entered" handler))
+(defn area2d/emit-area-shape-entered [self : Area2DHandle area-rid : RidHandle area : Area2DHandle area-shape-index : int local-shape-index : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "area_shape_entered" (:: area-rid :int) (:: area :int) area-shape-index local-shape-index))
 (defn area2d/on-area-shape-exited [self : Area2DHandle handler : (fn [RidHandle Area2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "area_shape_exited" handler))
+(defn area2d/emit-area-shape-exited [self : Area2DHandle area-rid : RidHandle area : Area2DHandle area-shape-index : int local-shape-index : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "area_shape_exited" (:: area-rid :int) (:: area :int) area-shape-index local-shape-index))
 (defn area2d/on-area-entered [self : Area2DHandle handler : (fn [Area2DHandle] void)] : void
   (godot-connect-typed (:: self :int) "area_entered" handler))
+(defn area2d/emit-area-entered [self : Area2DHandle area : Area2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "area_entered" (:: area :int)))
 (defn area2d/on-area-exited [self : Area2DHandle handler : (fn [Area2DHandle] void)] : void
   (godot-connect-typed (:: self :int) "area_exited" handler))
+(defn area2d/emit-area-exited [self : Area2DHandle area : Area2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "area_exited" (:: area :int)))
 
 ;; ---- AudioStream (6 methods, 1 signals) ----
 (defn audiostream/get-length [self : AudioStreamHandle] : float
@@ -592,6 +612,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (:: self :int) "is_meta_stream"))
 (defn audiostream/on-parameter-list-changed [self : AudioStreamHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "parameter_list_changed" handler))
+(defn audiostream/emit-parameter-list-changed [self : AudioStreamHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "parameter_list_changed"))
 
 ;; ---- AudioStreamPlayer (25 methods, 1 signals) ----
 (defn audiostreamplayer/set-stream [self : AudioStreamPlayerHandle stream : AudioStreamHandle]
@@ -646,6 +668,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_playback_type"))
 (defn audiostreamplayer/on-finished [self : AudioStreamPlayerHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "finished" handler))
+(defn audiostreamplayer/emit-finished [self : AudioStreamPlayerHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "finished"))
 
 ;; ---- AudioStreamPlayer2D (31 methods, 1 signals) ----
 (defn audiostreamplayer2d/set-stream [self : AudioStreamPlayer2DHandle stream : AudioStreamHandle]
@@ -712,6 +736,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_playback_type"))
 (defn audiostreamplayer2d/on-finished [self : AudioStreamPlayer2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "finished" handler))
+(defn audiostreamplayer2d/emit-finished [self : AudioStreamPlayer2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "finished"))
 
 ;; ---- Camera2D (49 methods, 0 signals) ----
 (defn camera2d/set-offset [self : Camera2DHandle offset : Vec2Handle]
@@ -986,12 +1012,20 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_clip_children_mode"))
 (defn canvasitem/on-draw [self : CanvasItemHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "draw" handler))
+(defn canvasitem/emit-draw [self : CanvasItemHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "draw"))
 (defn canvasitem/on-visibility-changed [self : CanvasItemHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "visibility_changed" handler))
+(defn canvasitem/emit-visibility-changed [self : CanvasItemHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "visibility_changed"))
 (defn canvasitem/on-hidden [self : CanvasItemHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "hidden" handler))
+(defn canvasitem/emit-hidden [self : CanvasItemHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "hidden"))
 (defn canvasitem/on-item-rect-changed [self : CanvasItemHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "item_rect_changed" handler))
+(defn canvasitem/emit-item-rect-changed [self : CanvasItemHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "item_rect_changed"))
 
 ;; ---- CanvasLayer (21 methods, 1 signals) ----
 (defn canvaslayer/set-layer [self : CanvasLayerHandle layer : int]
@@ -1038,6 +1072,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_canvas") :RidHandle))
 (defn canvaslayer/on-visibility-changed [self : CanvasLayerHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "visibility_changed" handler))
+(defn canvaslayer/emit-visibility-changed [self : CanvasLayerHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "visibility_changed"))
 
 ;; ---- CharacterBody2D (48 methods, 0 signals) ----
 (defn characterbody2d/move-and-slide [self : CharacterBody2DHandle] : bool
@@ -1412,22 +1448,40 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (:: self :int) "is_localizing_numeral_system"))
 (defn control/on-resized [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "resized" handler))
+(defn control/emit-resized [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "resized"))
 (defn control/on-gui-input [self : ControlHandle handler : (fn [InputEventHandle] void)] : void
   (godot-connect-typed (:: self :int) "gui_input" handler))
+(defn control/emit-gui-input [self : ControlHandle event : InputEventHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "gui_input" (:: event :int)))
 (defn control/on-mouse-entered [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "mouse_entered" handler))
+(defn control/emit-mouse-entered [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "mouse_entered"))
 (defn control/on-mouse-exited [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "mouse_exited" handler))
+(defn control/emit-mouse-exited [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "mouse_exited"))
 (defn control/on-focus-entered [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "focus_entered" handler))
+(defn control/emit-focus-entered [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "focus_entered"))
 (defn control/on-focus-exited [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "focus_exited" handler))
+(defn control/emit-focus-exited [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "focus_exited"))
 (defn control/on-size-flags-changed [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "size_flags_changed" handler))
+(defn control/emit-size-flags-changed [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "size_flags_changed"))
 (defn control/on-minimum-size-changed [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "minimum_size_changed" handler))
+(defn control/emit-minimum-size-changed [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "minimum_size_changed"))
 (defn control/on-theme-changed [self : ControlHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "theme_changed" handler))
+(defn control/emit-theme-changed [self : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "theme_changed"))
 
 ;; ---- Engine (36 methods, 0 signals) ----
 (defn engine/set-physics-ticks-per-second [physics-ticks-per-second : int]
@@ -1996,22 +2050,40 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "remove_resource_tooltip_plugin" plugin))
 (defn filesystemdock/on-inherit [self : FileSystemDockHandle handler : (fn [cstr] void)] : void
   (godot-connect-typed (:: self :int) "inherit" handler))
+(defn filesystemdock/emit-inherit [self : FileSystemDockHandle file : cstr] : void
+  (godot-call-v (:: self :int) "emit_signal" "inherit" file))
 (defn filesystemdock/on-instantiate [self : FileSystemDockHandle handler : (fn [PackedStringHandle] void)] : void
   (godot-connect-typed (:: self :int) "instantiate" handler))
+(defn filesystemdock/emit-instantiate [self : FileSystemDockHandle files : PackedStringHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "instantiate" (:: files :int)))
 (defn filesystemdock/on-resource-removed [self : FileSystemDockHandle handler : (fn [ResourceHandle] void)] : void
   (godot-connect-typed (:: self :int) "resource_removed" handler))
+(defn filesystemdock/emit-resource-removed [self : FileSystemDockHandle resource : ResourceHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "resource_removed" (:: resource :int)))
 (defn filesystemdock/on-file-removed [self : FileSystemDockHandle handler : (fn [cstr] void)] : void
   (godot-connect-typed (:: self :int) "file_removed" handler))
+(defn filesystemdock/emit-file-removed [self : FileSystemDockHandle file : cstr] : void
+  (godot-call-v (:: self :int) "emit_signal" "file_removed" file))
 (defn filesystemdock/on-folder-removed [self : FileSystemDockHandle handler : (fn [cstr] void)] : void
   (godot-connect-typed (:: self :int) "folder_removed" handler))
+(defn filesystemdock/emit-folder-removed [self : FileSystemDockHandle folder : cstr] : void
+  (godot-call-v (:: self :int) "emit_signal" "folder_removed" folder))
 (defn filesystemdock/on-files-moved [self : FileSystemDockHandle handler : (fn [cstr cstr] void)] : void
   (godot-connect-typed (:: self :int) "files_moved" handler))
+(defn filesystemdock/emit-files-moved [self : FileSystemDockHandle old-file : cstr new-file : cstr] : void
+  (godot-call-v (:: self :int) "emit_signal" "files_moved" old-file new-file))
 (defn filesystemdock/on-folder-moved [self : FileSystemDockHandle handler : (fn [cstr cstr] void)] : void
   (godot-connect-typed (:: self :int) "folder_moved" handler))
+(defn filesystemdock/emit-folder-moved [self : FileSystemDockHandle old-folder : cstr new-folder : cstr] : void
+  (godot-call-v (:: self :int) "emit_signal" "folder_moved" old-folder new-folder))
 (defn filesystemdock/on-folder-color-changed [self : FileSystemDockHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "folder_color_changed" handler))
+(defn filesystemdock/emit-folder-color-changed [self : FileSystemDockHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "folder_color_changed"))
 (defn filesystemdock/on-display-mode-changed [self : FileSystemDockHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "display_mode_changed" handler))
+(defn filesystemdock/emit-display-mode-changed [self : FileSystemDockHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "display_mode_changed"))
 
 ;; ---- GPUParticles2D (52 methods, 1 signals) ----
 (defn gpuparticles2d/set-emitting [self : GPUParticles2DHandle emitting : bool]
@@ -2120,6 +2192,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-f (:: self :int) "get_amount_ratio"))
 (defn gpuparticles2d/on-finished [self : GPUParticles2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "finished" handler))
+(defn gpuparticles2d/emit-finished [self : GPUParticles2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "finished"))
 
 ;; ---- Image (71 methods, 0 signals) ----
 (defn image/get-width [self : ImageHandle] : int
@@ -2384,6 +2458,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (godot-singleton "Input") "is_emulating_touch_from_mouse"))
 (defn input/on-joy-connection-changed [self : InputHandle handler : (fn [int bool] void)] : void
   (godot-connect-typed (:: self :int) "joy_connection_changed" handler))
+(defn input/emit-joy-connection-changed [self : InputHandle device : int connected : bool] : void
+  (godot-call-v (:: self :int) "emit_signal" "joy_connection_changed" device connected))
 
 ;; ---- InputEvent (15 methods, 0 signals) ----
 (defn inputevent/set-device [self : InputEventHandle device : int]
@@ -2644,6 +2720,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_texture") :Texture2DHandle))
 (defn meshinstance2d/on-texture-changed [self : MeshInstance2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "texture_changed" handler))
+(defn meshinstance2d/emit-texture-changed [self : MeshInstance2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "texture_changed"))
 
 ;; ---- NavigationAgent2D (71 methods, 6 signals) ----
 (defn navigationagent2d/get-rid [self : NavigationAgent2DHandle] : RidHandle
@@ -2790,16 +2868,28 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-f (:: self :int) "get_debug_path_custom_line_width"))
 (defn navigationagent2d/on-path-changed [self : NavigationAgent2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "path_changed" handler))
+(defn navigationagent2d/emit-path-changed [self : NavigationAgent2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "path_changed"))
 (defn navigationagent2d/on-target-reached [self : NavigationAgent2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "target_reached" handler))
+(defn navigationagent2d/emit-target-reached [self : NavigationAgent2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "target_reached"))
 (defn navigationagent2d/on-waypoint-reached [self : NavigationAgent2DHandle handler : (fn [DictHandle] void)] : void
   (godot-connect-typed (:: self :int) "waypoint_reached" handler))
+(defn navigationagent2d/emit-waypoint-reached [self : NavigationAgent2DHandle details : DictHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "waypoint_reached" (:: details :int)))
 (defn navigationagent2d/on-link-reached [self : NavigationAgent2DHandle handler : (fn [DictHandle] void)] : void
   (godot-connect-typed (:: self :int) "link_reached" handler))
+(defn navigationagent2d/emit-link-reached [self : NavigationAgent2DHandle details : DictHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "link_reached" (:: details :int)))
 (defn navigationagent2d/on-navigation-finished [self : NavigationAgent2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "navigation_finished" handler))
+(defn navigationagent2d/emit-navigation-finished [self : NavigationAgent2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "navigation_finished"))
 (defn navigationagent2d/on-velocity-computed [self : NavigationAgent2DHandle handler : (fn [Vec2Handle] void)] : void
   (godot-connect-typed (:: self :int) "velocity_computed" handler))
+(defn navigationagent2d/emit-velocity-computed [self : NavigationAgent2DHandle safe-velocity : Vec2Handle] : void
+  (godot-call-v (:: self :int) "emit_signal" "velocity_computed" (:: safe-velocity :int)))
 
 ;; ---- NavigationRegion2D (20 methods, 2 signals) ----
 (defn navigationregion2d/get-rid [self : NavigationRegion2DHandle] : RidHandle
@@ -2844,8 +2934,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (:: self :int) "is_baking"))
 (defn navigationregion2d/on-navigation-polygon-changed [self : NavigationRegion2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "navigation_polygon_changed" handler))
+(defn navigationregion2d/emit-navigation-polygon-changed [self : NavigationRegion2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "navigation_polygon_changed"))
 (defn navigationregion2d/on-bake-finished [self : NavigationRegion2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "bake_finished" handler))
+(defn navigationregion2d/emit-bake-finished [self : NavigationRegion2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "bake_finished"))
 
 ;; ---- Node (112 methods, 10 signals) ----
 (defn node/print-orphan-nodes []
@@ -3074,24 +3168,44 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "notify_thread_safe" what))
 (defn node/on-ready [self : NodeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "ready" handler))
+(defn node/emit-ready [self : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "ready"))
 (defn node/on-renamed [self : NodeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "renamed" handler))
+(defn node/emit-renamed [self : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "renamed"))
 (defn node/on-tree-entered [self : NodeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "tree_entered" handler))
+(defn node/emit-tree-entered [self : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "tree_entered"))
 (defn node/on-tree-exiting [self : NodeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "tree_exiting" handler))
+(defn node/emit-tree-exiting [self : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "tree_exiting"))
 (defn node/on-tree-exited [self : NodeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "tree_exited" handler))
+(defn node/emit-tree-exited [self : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "tree_exited"))
 (defn node/on-child-entered-tree [self : NodeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "child_entered_tree" handler))
+(defn node/emit-child-entered-tree [self : NodeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "child_entered_tree" (:: node :int)))
 (defn node/on-child-exiting-tree [self : NodeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "child_exiting_tree" handler))
+(defn node/emit-child-exiting-tree [self : NodeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "child_exiting_tree" (:: node :int)))
 (defn node/on-child-order-changed [self : NodeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "child_order_changed" handler))
+(defn node/emit-child-order-changed [self : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "child_order_changed"))
 (defn node/on-replacing-by [self : NodeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "replacing_by" handler))
+(defn node/emit-replacing-by [self : NodeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "replacing_by" (:: node :int)))
 (defn node/on-editor-description-changed [self : NodeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "editor_description_changed" handler))
+(defn node/emit-editor-description-changed [self : NodeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "editor_description_changed" (:: node :int)))
 
 ;; ---- Node2D (30 methods, 0 signals) ----
 (defn node2d/set-rotation [self : Node2DHandle radians : float]
@@ -3396,8 +3510,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "cancel_free"))
 (defn object/on-script-changed [self : ObjectHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "script_changed" handler))
+(defn object/emit-script-changed [self : ObjectHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "script_changed"))
 (defn object/on-property-list-changed [self : ObjectHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "property_list_changed" handler))
+(defn object/emit-property-list-changed [self : ObjectHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "property_list_changed"))
 
 ;; ---- PackedScene (4 methods, 0 signals) ----
 (defn packedscene/pack [self : PackedSceneHandle path : NodeHandle] : int
@@ -3718,8 +3836,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "duplicate" subresources) :ResourceHandle))
 (defn resource/on-changed [self : ResourceHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "changed" handler))
+(defn resource/emit-changed [self : ResourceHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "changed"))
 (defn resource/on-setup-local-to-scene-requested [self : ResourceHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "setup_local_to_scene_requested" handler))
+(defn resource/emit-setup-local-to-scene-requested [self : ResourceHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "setup_local_to_scene_requested"))
 
 ;; ---- ResourceLoader (12 methods, 0 signals) ----
 (defn resourceloader/load-threaded-request [path : cstr type-hint : cstr use-sub-threads : bool cache-mode : int] : int
@@ -3984,12 +4106,20 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "menu_option" option))
 (defn richtextlabel/on-meta-clicked [self : RichTextLabelHandle handler : (fn [int] void)] : void
   (godot-connect-typed (:: self :int) "meta_clicked" handler))
+(defn richtextlabel/emit-meta-clicked [self : RichTextLabelHandle meta : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "meta_clicked" meta))
 (defn richtextlabel/on-meta-hover-started [self : RichTextLabelHandle handler : (fn [int] void)] : void
   (godot-connect-typed (:: self :int) "meta_hover_started" handler))
+(defn richtextlabel/emit-meta-hover-started [self : RichTextLabelHandle meta : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "meta_hover_started" meta))
 (defn richtextlabel/on-meta-hover-ended [self : RichTextLabelHandle handler : (fn [int] void)] : void
   (godot-connect-typed (:: self :int) "meta_hover_ended" handler))
+(defn richtextlabel/emit-meta-hover-ended [self : RichTextLabelHandle meta : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "meta_hover_ended" meta))
 (defn richtextlabel/on-finished [self : RichTextLabelHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "finished" handler))
+(defn richtextlabel/emit-finished [self : RichTextLabelHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "finished"))
 
 ;; ---- RigidBody2D (58 methods, 5 signals) ----
 (defn rigidbody2d/set-mass [self : RigidBody2DHandle mass : float]
@@ -4110,14 +4240,24 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_colliding_bodies"))
 (defn rigidbody2d/on-body-shape-entered [self : RigidBody2DHandle handler : (fn [RidHandle NodeHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_entered" handler))
+(defn rigidbody2d/emit-body-shape-entered [self : RigidBody2DHandle body-rid : RidHandle body : NodeHandle body-shape-index : int local-shape-index : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_shape_entered" (:: body-rid :int) (:: body :int) body-shape-index local-shape-index))
 (defn rigidbody2d/on-body-shape-exited [self : RigidBody2DHandle handler : (fn [RidHandle NodeHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_exited" handler))
+(defn rigidbody2d/emit-body-shape-exited [self : RigidBody2DHandle body-rid : RidHandle body : NodeHandle body-shape-index : int local-shape-index : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_shape_exited" (:: body-rid :int) (:: body :int) body-shape-index local-shape-index))
 (defn rigidbody2d/on-body-entered [self : RigidBody2DHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "body_entered" handler))
+(defn rigidbody2d/emit-body-entered [self : RigidBody2DHandle body : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_entered" (:: body :int)))
 (defn rigidbody2d/on-body-exited [self : RigidBody2DHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "body_exited" handler))
+(defn rigidbody2d/emit-body-exited [self : RigidBody2DHandle body : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "body_exited" (:: body :int)))
 (defn rigidbody2d/on-sleeping-state-changed [self : RigidBody2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "sleeping_state_changed" handler))
+(defn rigidbody2d/emit-sleeping-state-changed [self : RigidBody2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "sleeping_state_changed"))
 
 ;; ---- SceneTree (44 methods, 8 signals) ----
 (defn scenetree/get-root [self : SceneTreeHandle] : WindowHandle
@@ -4210,20 +4350,36 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (:: self :int) "is_multiplayer_poll_enabled"))
 (defn scenetree/on-tree-changed [self : SceneTreeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "tree_changed" handler))
+(defn scenetree/emit-tree-changed [self : SceneTreeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "tree_changed"))
 (defn scenetree/on-tree-process-mode-changed [self : SceneTreeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "tree_process_mode_changed" handler))
+(defn scenetree/emit-tree-process-mode-changed [self : SceneTreeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "tree_process_mode_changed"))
 (defn scenetree/on-node-added [self : SceneTreeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "node_added" handler))
+(defn scenetree/emit-node-added [self : SceneTreeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "node_added" (:: node :int)))
 (defn scenetree/on-node-removed [self : SceneTreeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "node_removed" handler))
+(defn scenetree/emit-node-removed [self : SceneTreeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "node_removed" (:: node :int)))
 (defn scenetree/on-node-renamed [self : SceneTreeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "node_renamed" handler))
+(defn scenetree/emit-node-renamed [self : SceneTreeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "node_renamed" (:: node :int)))
 (defn scenetree/on-node-configuration-warning-changed [self : SceneTreeHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "node_configuration_warning_changed" handler))
+(defn scenetree/emit-node-configuration-warning-changed [self : SceneTreeHandle node : NodeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "node_configuration_warning_changed" (:: node :int)))
 (defn scenetree/on-process-frame [self : SceneTreeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "process_frame" handler))
+(defn scenetree/emit-process-frame [self : SceneTreeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "process_frame"))
 (defn scenetree/on-physics-frame [self : SceneTreeHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "physics_frame" handler))
+(defn scenetree/emit-physics-frame [self : SceneTreeHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "physics_frame"))
 
 ;; ---- Shader (6 methods, 0 signals) ----
 (defn shader/get-mode [self : ShaderHandle] : int
@@ -4268,6 +4424,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_bone_local_pose_override" bone-idx) :Transform2DHandle))
 (defn skeleton2d/on-bone-setup-changed [self : Skeleton2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "bone_setup_changed" handler))
+(defn skeleton2d/emit-bone-setup-changed [self : Skeleton2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "bone_setup_changed"))
 
 ;; ---- Sprite2D (26 methods, 2 signals) ----
 (defn sprite2d/set-texture [self : Sprite2DHandle texture : Texture2DHandle]
@@ -4324,8 +4482,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_rect") :Rect2Handle))
 (defn sprite2d/on-frame-changed [self : Sprite2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "frame_changed" handler))
+(defn sprite2d/emit-frame-changed [self : Sprite2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "frame_changed"))
 (defn sprite2d/on-texture-changed [self : Sprite2DHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "texture_changed" handler))
+(defn sprite2d/emit-texture-changed [self : Sprite2DHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "texture_changed"))
 
 ;; ---- StaticBody2D (6 methods, 0 signals) ----
 (defn staticbody2d/set-constant-linear-velocity [self : StaticBody2DHandle vel : Vec2Handle]
@@ -4480,6 +4642,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_neighbor_cell" coords neighbor))
 (defn tilemap/on-changed [self : TileMapHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "changed" handler))
+(defn tilemap/emit-changed [self : TileMapHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "changed"))
 
 ;; ---- TileMapLayer (48 methods, 1 signals) ----
 (defn tilemaplayer/set-cell [self : TileMapLayerHandle coords : int source-id : int atlas-coords : int alternative-tile : int]
@@ -4580,6 +4744,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_navigation_visibility_mode"))
 (defn tilemaplayer/on-changed [self : TileMapLayerHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "changed" handler))
+(defn tilemaplayer/emit-changed [self : TileMapLayerHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "changed"))
 
 ;; ---- Timer (14 methods, 1 signals) ----
 (defn timer/set-wait-time [self : TimerHandle time-sec : float]
@@ -4612,6 +4778,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_timer_process_callback"))
 (defn timer/on-timeout [self : TimerHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "timeout" handler))
+(defn timer/emit-timeout [self : TimerHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "timeout"))
 
 ;; ---- Tween (24 methods, 3 signals) ----
 (defn tween/tween-property [self : TweenHandle object : ObjectHandle property : cstr final-val : int duration : float] : int
@@ -4664,10 +4832,16 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (godot-singleton "Tween") "interpolate_value" initial-value delta-value elapsed-time duration trans-type ease-type))
 (defn tween/on-step-finished [self : TweenHandle handler : (fn [int] void)] : void
   (godot-connect-typed (:: self :int) "step_finished" handler))
+(defn tween/emit-step-finished [self : TweenHandle idx : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "step_finished" idx))
 (defn tween/on-loop-finished [self : TweenHandle handler : (fn [int] void)] : void
   (godot-connect-typed (:: self :int) "loop_finished" handler))
+(defn tween/emit-loop-finished [self : TweenHandle loop-count : int] : void
+  (godot-call-v (:: self :int) "emit_signal" "loop_finished" loop-count))
 (defn tween/on-finished [self : TweenHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "finished" handler))
+(defn tween/emit-finished [self : TweenHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "finished"))
 
 ;; ---- Viewport (113 methods, 2 signals) ----
 (defn viewport/set-world-2d [self : ViewportHandle world-2d : int]
@@ -4898,8 +5072,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_vrs_texture") :Texture2DHandle))
 (defn viewport/on-size-changed [self : ViewportHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "size_changed" handler))
+(defn viewport/emit-size-changed [self : ViewportHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "size_changed"))
 (defn viewport/on-gui-focus-changed [self : ViewportHandle handler : (fn [ControlHandle] void)] : void
   (godot-connect-typed (:: self :int) "gui_focus_changed" handler))
+(defn viewport/emit-gui-focus-changed [self : ViewportHandle node : ControlHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "gui_focus_changed" (:: node :int)))
 
 ;; ---- Window (117 methods, 13 signals) ----
 (defn window/set-title [self : WindowHandle title : cstr]
@@ -5138,30 +5316,56 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "popup_exclusive_centered_clamped" (:: from-node :int) minsize fallback-ratio))
 (defn window/on-window-input [self : WindowHandle handler : (fn [InputEventHandle] void)] : void
   (godot-connect-typed (:: self :int) "window_input" handler))
+(defn window/emit-window-input [self : WindowHandle event : InputEventHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "window_input" (:: event :int)))
 (defn window/on-files-dropped [self : WindowHandle handler : (fn [PackedStringHandle] void)] : void
   (godot-connect-typed (:: self :int) "files_dropped" handler))
+(defn window/emit-files-dropped [self : WindowHandle files : PackedStringHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "files_dropped" (:: files :int)))
 (defn window/on-mouse-entered [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "mouse_entered" handler))
+(defn window/emit-mouse-entered [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "mouse_entered"))
 (defn window/on-mouse-exited [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "mouse_exited" handler))
+(defn window/emit-mouse-exited [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "mouse_exited"))
 (defn window/on-focus-entered [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "focus_entered" handler))
+(defn window/emit-focus-entered [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "focus_entered"))
 (defn window/on-focus-exited [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "focus_exited" handler))
+(defn window/emit-focus-exited [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "focus_exited"))
 (defn window/on-close-requested [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "close_requested" handler))
+(defn window/emit-close-requested [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "close_requested"))
 (defn window/on-go-back-requested [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "go_back_requested" handler))
+(defn window/emit-go-back-requested [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "go_back_requested"))
 (defn window/on-visibility-changed [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "visibility_changed" handler))
+(defn window/emit-visibility-changed [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "visibility_changed"))
 (defn window/on-about-to-popup [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "about_to_popup" handler))
+(defn window/emit-about-to-popup [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "about_to_popup"))
 (defn window/on-theme-changed [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "theme_changed" handler))
+(defn window/emit-theme-changed [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "theme_changed"))
 (defn window/on-dpi-changed [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "dpi_changed" handler))
+(defn window/emit-dpi-changed [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "dpi_changed"))
 (defn window/on-titlebar-changed [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "titlebar_changed" handler))
+(defn window/emit-titlebar-changed [self : WindowHandle] : void
+  (godot-call-v (:: self :int) "emit_signal" "titlebar_changed"))
 
 ;; ---- WorldBoundaryShape2D (4 methods, 0 signals) ----
 (defn worldboundaryshape2d/set-normal [self : WorldBoundaryShape2DHandle normal : Vec2Handle]
