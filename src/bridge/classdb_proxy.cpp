@@ -23,6 +23,16 @@ extern "C" {
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/packed_int64_array.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
+#include <godot_cpp/variant/packed_float64_array.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/packed_vector2_array.hpp>
+#include <godot_cpp/variant/packed_vector3_array.hpp>
+#include <godot_cpp/variant/packed_color_array.hpp>
+#include <godot_cpp/variant/rid.hpp>
 
 #include <cstdint>
 #include <cstdio>
@@ -252,6 +262,21 @@ static TuriValue tg_result_to_turi(const Variant &v) {
         case Variant::TRANSFORM3D:
         case Variant::ARRAY:
         case Variant::DICTIONARY:
+        // T3.D -- PackedXxxArray + RID land in the same arena. The
+        // refcount-shared Packed* containers and the engine-owned RIDs
+        // are usable from Turmeric only through their per-type natives
+        // (godot-packed-* / godot-rid-*); marshalling here just keeps
+        // their identity intact across godot-call boundaries.
+        case Variant::PACKED_BYTE_ARRAY:
+        case Variant::PACKED_INT32_ARRAY:
+        case Variant::PACKED_INT64_ARRAY:
+        case Variant::PACKED_FLOAT32_ARRAY:
+        case Variant::PACKED_FLOAT64_ARRAY:
+        case Variant::PACKED_STRING_ARRAY:
+        case Variant::PACKED_VECTOR2_ARRAY:
+        case Variant::PACKED_VECTOR3_ARRAY:
+        case Variant::PACKED_COLOR_ARRAY:
+        case Variant::RID:
             return turi_int(variant_arena_push(v));
         case Variant::OBJECT: {
             Object *o = (Object *)v;
@@ -797,6 +822,362 @@ TuriValue tg_native_godot_dict_get_c(TuriEnv *env, TuriValue *args, uint32_t n, 
         return turi_cstr(string_arena_push(cs.get_data(), (size_t)cs.length()));
     }
     return turi_cstr(string_arena_push("", 0));
+}
+
+// --- T3.D: PackedXxxArray + RID -------------------------------------------
+//
+// All PackedXxx and RID values live in the same arena. Packed* are
+// refcount-shared on the godot-cpp side, so a copied handle mutates the
+// shared backing store (same model the Dictionary/Array natives rely on).
+// RID is small and value-typed; we expose it read-only.
+
+namespace {
+
+// Common arg-shape: (handle :int) -- returns the live Variant or null.
+const Variant *tg_packed_handle(TuriValue v, const char *who) {
+    return tg_handle_arg(v, who);
+}
+
+// Common arg-shape: (handle :int idx :int) -- returns false + printerr if
+// the shape is wrong, the handle is wrong type, or the index is OOB.
+bool tg_packed_get_args(TuriValue *args, uint32_t n, Variant::Type want,
+                        const char *who, const Variant **out_vp, int64_t *out_i) {
+    if (n != 2 || args[1].tag != TURI_INT) {
+        UtilityFunctions::printerr(String("turmeric-godot: ") + String(who) +
+                                   String(" takes (handle, :int)"));
+        return false;
+    }
+    const Variant *vp = tg_packed_handle(args[0], who);
+    if (!vp || vp->get_type() != want) return false;
+    *out_vp = vp;
+    *out_i  = args[1].as_int;
+    return true;
+}
+
+// Sized lookup: same as above but also enforces 0 <= i < size.
+template <typename Arr>
+bool tg_packed_index_check(const Arr &a, int64_t i, const char *who) {
+    if (i < 0 || i >= (int64_t)a.size()) {
+        UtilityFunctions::printerr(String("turmeric-godot: ") + String(who) +
+                                   String(" index ") + String::num_int64(i) +
+                                   String(" out of range [0, ") +
+                                   String::num_int64((int64_t)a.size()) + String(")"));
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+TuriValue tg_native_godot_packed_size(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-size H) takes 1 arg");
+        return turi_int(0);
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-size)");
+    if (!vp) return turi_int(0);
+    switch (vp->get_type()) {
+        case Variant::PACKED_BYTE_ARRAY:    return turi_int((int64_t)((PackedByteArray)*vp).size());
+        case Variant::PACKED_INT32_ARRAY:   return turi_int((int64_t)((PackedInt32Array)*vp).size());
+        case Variant::PACKED_INT64_ARRAY:   return turi_int((int64_t)((PackedInt64Array)*vp).size());
+        case Variant::PACKED_FLOAT32_ARRAY: return turi_int((int64_t)((PackedFloat32Array)*vp).size());
+        case Variant::PACKED_FLOAT64_ARRAY: return turi_int((int64_t)((PackedFloat64Array)*vp).size());
+        case Variant::PACKED_STRING_ARRAY:  return turi_int((int64_t)((PackedStringArray)*vp).size());
+        case Variant::PACKED_VECTOR2_ARRAY: return turi_int((int64_t)((PackedVector2Array)*vp).size());
+        case Variant::PACKED_VECTOR3_ARRAY: return turi_int((int64_t)((PackedVector3Array)*vp).size());
+        case Variant::PACKED_COLOR_ARRAY:   return turi_int((int64_t)((PackedColorArray)*vp).size());
+        default:
+            UtilityFunctions::printerr(
+                "turmeric-godot: (godot-packed-size) handle is not a Packed*Array");
+            return turi_int(0);
+    }
+}
+
+// ---- byte (uint8) ---------------------------------------------------------
+TuriValue tg_native_godot_packed_byte_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedByteArray())));
+}
+TuriValue tg_native_godot_packed_byte_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_BYTE_ARRAY, "(godot-packed-byte-get)", &vp, &i))
+        return turi_int(0);
+    PackedByteArray a = (PackedByteArray)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-byte-get)")) return turi_int(0);
+    return turi_int((int64_t)a[(int)i]);
+}
+TuriValue tg_native_godot_packed_byte_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2 || args[1].tag != TURI_INT) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-byte-push h v) takes (handle, :int)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-byte-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_BYTE_ARRAY) return turi_nil();
+    PackedByteArray a = (PackedByteArray)*vp;
+    a.push_back((uint8_t)(args[1].as_int & 0xff));
+    return turi_nil();
+}
+
+// ---- int32 ----------------------------------------------------------------
+TuriValue tg_native_godot_packed_int32_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedInt32Array())));
+}
+TuriValue tg_native_godot_packed_int32_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_INT32_ARRAY, "(godot-packed-int32-get)", &vp, &i))
+        return turi_int(0);
+    PackedInt32Array a = (PackedInt32Array)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-int32-get)")) return turi_int(0);
+    return turi_int((int64_t)a[(int)i]);
+}
+TuriValue tg_native_godot_packed_int32_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2 || args[1].tag != TURI_INT) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-int32-push h v) takes (handle, :int)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-int32-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_INT32_ARRAY) return turi_nil();
+    PackedInt32Array a = (PackedInt32Array)*vp;
+    a.push_back((int32_t)args[1].as_int);
+    return turi_nil();
+}
+
+// ---- int64 ----------------------------------------------------------------
+TuriValue tg_native_godot_packed_int64_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedInt64Array())));
+}
+TuriValue tg_native_godot_packed_int64_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_INT64_ARRAY, "(godot-packed-int64-get)", &vp, &i))
+        return turi_int(0);
+    PackedInt64Array a = (PackedInt64Array)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-int64-get)")) return turi_int(0);
+    return turi_int((int64_t)a[(int)i]);
+}
+TuriValue tg_native_godot_packed_int64_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2 || args[1].tag != TURI_INT) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-int64-push h v) takes (handle, :int)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-int64-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_INT64_ARRAY) return turi_nil();
+    PackedInt64Array a = (PackedInt64Array)*vp;
+    a.push_back((int64_t)args[1].as_int);
+    return turi_nil();
+}
+
+// ---- float32 --------------------------------------------------------------
+TuriValue tg_native_godot_packed_float32_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedFloat32Array())));
+}
+TuriValue tg_native_godot_packed_float32_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_FLOAT32_ARRAY,
+                            "(godot-packed-float32-get)", &vp, &i))
+        return turi_float(0.0);
+    PackedFloat32Array a = (PackedFloat32Array)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-float32-get)")) return turi_float(0.0);
+    return turi_float((double)a[(int)i]);
+}
+TuriValue tg_native_godot_packed_float32_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    double f = 0.0;
+    if (n != 2 || !tg_arg_as_double(args[1], &f)) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-float32-push h v) takes (handle, :float|:int)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-float32-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_FLOAT32_ARRAY) return turi_nil();
+    PackedFloat32Array a = (PackedFloat32Array)*vp;
+    a.push_back((float)f);
+    return turi_nil();
+}
+
+// ---- float64 --------------------------------------------------------------
+TuriValue tg_native_godot_packed_float64_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedFloat64Array())));
+}
+TuriValue tg_native_godot_packed_float64_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_FLOAT64_ARRAY,
+                            "(godot-packed-float64-get)", &vp, &i))
+        return turi_float(0.0);
+    PackedFloat64Array a = (PackedFloat64Array)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-float64-get)")) return turi_float(0.0);
+    return turi_float((double)a[(int)i]);
+}
+TuriValue tg_native_godot_packed_float64_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    double f = 0.0;
+    if (n != 2 || !tg_arg_as_double(args[1], &f)) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-float64-push h v) takes (handle, :float|:int)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-float64-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_FLOAT64_ARRAY) return turi_nil();
+    PackedFloat64Array a = (PackedFloat64Array)*vp;
+    a.push_back((double)f);
+    return turi_nil();
+}
+
+// ---- string ---------------------------------------------------------------
+TuriValue tg_native_godot_packed_string_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedStringArray())));
+}
+TuriValue tg_native_godot_packed_string_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_STRING_ARRAY,
+                            "(godot-packed-string-get)", &vp, &i))
+        return turi_cstr(string_arena_push("", 0));
+    PackedStringArray a = (PackedStringArray)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-string-get)"))
+        return turi_cstr(string_arena_push("", 0));
+    String s = a[(int)i];
+    CharString cs = s.utf8();
+    return turi_cstr(string_arena_push(cs.get_data(), (size_t)cs.length()));
+}
+TuriValue tg_native_godot_packed_string_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2 || args[1].tag != TURI_CSTR || !args[1].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-string-push h v) takes (handle, :cstr)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-string-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_STRING_ARRAY) return turi_nil();
+    PackedStringArray a = (PackedStringArray)*vp;
+    a.push_back(String(args[1].as_cstr));
+    return turi_nil();
+}
+
+// ---- vec2 / vec3 / color (arena-handle element types) --------------------
+// get returns a *new* arena handle to the element value; push expects an
+// arena handle the caller already has from godot-vec2 / godot-vec3 / godot-color.
+
+TuriValue tg_native_godot_packed_vec2_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedVector2Array())));
+}
+TuriValue tg_native_godot_packed_vec2_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_VECTOR2_ARRAY,
+                            "(godot-packed-vec2-get)", &vp, &i))
+        return turi_nil();
+    PackedVector2Array a = (PackedVector2Array)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-vec2-get)")) return turi_nil();
+    return turi_int(variant_arena_push(Variant(a[(int)i])));
+}
+TuriValue tg_native_godot_packed_vec2_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-vec2-push h v) takes (handle, Vec2Handle)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-vec2-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_VECTOR2_ARRAY) return turi_nil();
+    const Variant *elem = tg_handle_arg(args[1], "(godot-packed-vec2-push) v");
+    if (!elem || elem->get_type() != Variant::VECTOR2) return turi_nil();
+    PackedVector2Array a = (PackedVector2Array)*vp;
+    a.push_back((Vector2)*elem);
+    return turi_nil();
+}
+
+TuriValue tg_native_godot_packed_vec3_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedVector3Array())));
+}
+TuriValue tg_native_godot_packed_vec3_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_VECTOR3_ARRAY,
+                            "(godot-packed-vec3-get)", &vp, &i))
+        return turi_nil();
+    PackedVector3Array a = (PackedVector3Array)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-vec3-get)")) return turi_nil();
+    return turi_int(variant_arena_push(Variant(a[(int)i])));
+}
+TuriValue tg_native_godot_packed_vec3_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-vec3-push h v) takes (handle, Vec3Handle)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-vec3-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_VECTOR3_ARRAY) return turi_nil();
+    const Variant *elem = tg_handle_arg(args[1], "(godot-packed-vec3-push) v");
+    if (!elem || elem->get_type() != Variant::VECTOR3) return turi_nil();
+    PackedVector3Array a = (PackedVector3Array)*vp;
+    a.push_back((Vector3)*elem);
+    return turi_nil();
+}
+
+TuriValue tg_native_godot_packed_color_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)n; (void)ud;
+    return turi_int(variant_arena_push(Variant(PackedColorArray())));
+}
+TuriValue tg_native_godot_packed_color_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    const Variant *vp; int64_t i;
+    if (!tg_packed_get_args(args, n, Variant::PACKED_COLOR_ARRAY,
+                            "(godot-packed-color-get)", &vp, &i))
+        return turi_nil();
+    PackedColorArray a = (PackedColorArray)*vp;
+    if (!tg_packed_index_check(a, i, "(godot-packed-color-get)")) return turi_nil();
+    return turi_int(variant_arena_push(Variant(a[(int)i])));
+}
+TuriValue tg_native_godot_packed_color_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-packed-color-push h v) takes (handle, ColorHandle)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-packed-color-push)");
+    if (!vp || vp->get_type() != Variant::PACKED_COLOR_ARRAY) return turi_nil();
+    const Variant *elem = tg_handle_arg(args[1], "(godot-packed-color-push) v");
+    if (!elem || elem->get_type() != Variant::COLOR) return turi_nil();
+    PackedColorArray a = (PackedColorArray)*vp;
+    a.push_back((Color)*elem);
+    return turi_nil();
+}
+
+// ---- RID ------------------------------------------------------------------
+TuriValue tg_native_godot_rid_id(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-rid-id H) takes 1 arg");
+        return turi_int(0);
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-rid-id)");
+    if (!vp || vp->get_type() != Variant::RID) return turi_int(0);
+    RID r = (RID)*vp;
+    return turi_int((int64_t)r.get_id());
+}
+
+TuriValue tg_native_godot_rid_valid(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 1) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-rid-valid? H) takes 1 arg");
+        return turi_bool(false);
+    }
+    const Variant *vp = tg_packed_handle(args[0], "(godot-rid-valid?)");
+    if (!vp || vp->get_type() != Variant::RID) return turi_bool(false);
+    RID r = (RID)*vp;
+    return turi_bool(r.is_valid());
 }
 
 } // namespace godot

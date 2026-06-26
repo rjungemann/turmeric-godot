@@ -446,8 +446,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-c (:: self :int) "get_assigned_animation"))
 (defn animationplayer/queue [self : AnimationPlayerHandle name : cstr]
   (godot-call-v (:: self :int) "queue" name))
-(defn animationplayer/get-queue [self : AnimationPlayerHandle] : int
-  (godot-call (:: self :int) "get_queue"))
+(defn animationplayer/get-queue [self : AnimationPlayerHandle] : PackedStringHandle
+  (:: (godot-call (:: self :int) "get_queue") :PackedStringHandle))
 (defn animationplayer/clear-queue [self : AnimationPlayerHandle]
   (godot-call-v (:: self :int) "clear_queue"))
 (defn animationplayer/set-speed-scale [self : AnimationPlayerHandle speed : float]
@@ -560,17 +560,17 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_audio_bus_override" enable))
 (defn area2d/is-overriding-audio-bus [self : Area2DHandle] : bool
   (godot-call-b (:: self :int) "is_overriding_audio_bus"))
-(defn area2d/on-body-shape-entered [self : Area2DHandle handler : (fn [int Node2DHandle int int] void)] : void
+(defn area2d/on-body-shape-entered [self : Area2DHandle handler : (fn [RidHandle Node2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_entered" handler))
-(defn area2d/on-body-shape-exited [self : Area2DHandle handler : (fn [int Node2DHandle int int] void)] : void
+(defn area2d/on-body-shape-exited [self : Area2DHandle handler : (fn [RidHandle Node2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_exited" handler))
 (defn area2d/on-body-entered [self : Area2DHandle handler : (fn [Node2DHandle] void)] : void
   (godot-connect-typed (:: self :int) "body_entered" handler))
 (defn area2d/on-body-exited [self : Area2DHandle handler : (fn [Node2DHandle] void)] : void
   (godot-connect-typed (:: self :int) "body_exited" handler))
-(defn area2d/on-area-shape-entered [self : Area2DHandle handler : (fn [int Area2DHandle int int] void)] : void
+(defn area2d/on-area-shape-entered [self : Area2DHandle handler : (fn [RidHandle Area2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "area_shape_entered" handler))
-(defn area2d/on-area-shape-exited [self : Area2DHandle handler : (fn [int Area2DHandle int int] void)] : void
+(defn area2d/on-area-shape-exited [self : Area2DHandle handler : (fn [RidHandle Area2DHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "area_shape_exited" handler))
 (defn area2d/on-area-entered [self : Area2DHandle handler : (fn [Area2DHandle] void)] : void
   (godot-connect-typed (:: self :int) "area_entered" handler))
@@ -814,8 +814,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (:: self :int) "is_margin_drawing_enabled"))
 
 ;; ---- CanvasItem (85 methods, 4 signals) ----
-(defn canvasitem/get-canvas-item [self : CanvasItemHandle] : int
-  (godot-call (:: self :int) "get_canvas_item"))
+(defn canvasitem/get-canvas-item [self : CanvasItemHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_canvas_item") :RidHandle))
 (defn canvasitem/set-visible [self : CanvasItemHandle visible : bool]
   (godot-call-v (:: self :int) "set_visible" visible))
 (defn canvasitem/is-visible [self : CanvasItemHandle] : bool
@@ -862,16 +862,16 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "draw_line" (:: from :int) (:: to :int) (:: color :int) width antialiased))
 (defn canvasitem/draw-dashed-line [self : CanvasItemHandle from : Vec2Handle to : Vec2Handle color : ColorHandle width : float dash : float aligned : bool antialiased : bool]
   (godot-call-v (:: self :int) "draw_dashed_line" (:: from :int) (:: to :int) (:: color :int) width dash aligned antialiased))
-(defn canvasitem/draw-polyline [self : CanvasItemHandle points : int color : ColorHandle width : float antialiased : bool]
-  (godot-call-v (:: self :int) "draw_polyline" points (:: color :int) width antialiased))
-(defn canvasitem/draw-polyline-colors [self : CanvasItemHandle points : int colors : int width : float antialiased : bool]
-  (godot-call-v (:: self :int) "draw_polyline_colors" points colors width antialiased))
+(defn canvasitem/draw-polyline [self : CanvasItemHandle points : PackedVec2Handle color : ColorHandle width : float antialiased : bool]
+  (godot-call-v (:: self :int) "draw_polyline" (:: points :int) (:: color :int) width antialiased))
+(defn canvasitem/draw-polyline-colors [self : CanvasItemHandle points : PackedVec2Handle colors : PackedColorHandle width : float antialiased : bool]
+  (godot-call-v (:: self :int) "draw_polyline_colors" (:: points :int) (:: colors :int) width antialiased))
 (defn canvasitem/draw-arc [self : CanvasItemHandle center : Vec2Handle radius : float start-angle : float end-angle : float point-count : int color : ColorHandle width : float antialiased : bool]
   (godot-call-v (:: self :int) "draw_arc" (:: center :int) radius start-angle end-angle point-count (:: color :int) width antialiased))
-(defn canvasitem/draw-multiline [self : CanvasItemHandle points : int color : ColorHandle width : float antialiased : bool]
-  (godot-call-v (:: self :int) "draw_multiline" points (:: color :int) width antialiased))
-(defn canvasitem/draw-multiline-colors [self : CanvasItemHandle points : int colors : int width : float antialiased : bool]
-  (godot-call-v (:: self :int) "draw_multiline_colors" points colors width antialiased))
+(defn canvasitem/draw-multiline [self : CanvasItemHandle points : PackedVec2Handle color : ColorHandle width : float antialiased : bool]
+  (godot-call-v (:: self :int) "draw_multiline" (:: points :int) (:: color :int) width antialiased))
+(defn canvasitem/draw-multiline-colors [self : CanvasItemHandle points : PackedVec2Handle colors : PackedColorHandle width : float antialiased : bool]
+  (godot-call-v (:: self :int) "draw_multiline_colors" (:: points :int) (:: colors :int) width antialiased))
 (defn canvasitem/draw-rect [self : CanvasItemHandle rect : Rect2Handle color : ColorHandle filled : bool width : float antialiased : bool]
   (godot-call-v (:: self :int) "draw_rect" (:: rect :int) (:: color :int) filled width antialiased))
 (defn canvasitem/draw-circle [self : CanvasItemHandle position : Vec2Handle radius : float color : ColorHandle filled : bool width : float antialiased : bool]
@@ -888,12 +888,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "draw_lcd_texture_rect_region" (:: texture :int) (:: rect :int) (:: src-rect :int) (:: modulate :int)))
 (defn canvasitem/draw-style-box [self : CanvasItemHandle style-box : int rect : Rect2Handle]
   (godot-call-v (:: self :int) "draw_style_box" style-box (:: rect :int)))
-(defn canvasitem/draw-primitive [self : CanvasItemHandle points : int colors : int uvs : int texture : Texture2DHandle]
-  (godot-call-v (:: self :int) "draw_primitive" points colors uvs (:: texture :int)))
-(defn canvasitem/draw-polygon [self : CanvasItemHandle points : int colors : int uvs : int texture : Texture2DHandle]
-  (godot-call-v (:: self :int) "draw_polygon" points colors uvs (:: texture :int)))
-(defn canvasitem/draw-colored-polygon [self : CanvasItemHandle points : int color : ColorHandle uvs : int texture : Texture2DHandle]
-  (godot-call-v (:: self :int) "draw_colored_polygon" points (:: color :int) uvs (:: texture :int)))
+(defn canvasitem/draw-primitive [self : CanvasItemHandle points : PackedVec2Handle colors : PackedColorHandle uvs : PackedVec2Handle texture : Texture2DHandle]
+  (godot-call-v (:: self :int) "draw_primitive" (:: points :int) (:: colors :int) (:: uvs :int) (:: texture :int)))
+(defn canvasitem/draw-polygon [self : CanvasItemHandle points : PackedVec2Handle colors : PackedColorHandle uvs : PackedVec2Handle texture : Texture2DHandle]
+  (godot-call-v (:: self :int) "draw_polygon" (:: points :int) (:: colors :int) (:: uvs :int) (:: texture :int)))
+(defn canvasitem/draw-colored-polygon [self : CanvasItemHandle points : PackedVec2Handle color : ColorHandle uvs : PackedVec2Handle texture : Texture2DHandle]
+  (godot-call-v (:: self :int) "draw_colored_polygon" (:: points :int) (:: color :int) (:: uvs :int) (:: texture :int)))
 (defn canvasitem/draw-string [self : CanvasItemHandle font : int pos : Vec2Handle text : cstr alignment : int width : float font-size : int modulate : ColorHandle justification-flags : int direction : int orientation : int]
   (godot-call-v (:: self :int) "draw_string" font (:: pos :int) text alignment width font-size (:: modulate :int) justification-flags direction orientation))
 (defn canvasitem/draw-multiline-string [self : CanvasItemHandle font : int pos : Vec2Handle text : cstr alignment : int width : float font-size : int max-lines : int modulate : ColorHandle brk-flags : int justification-flags : int direction : int orientation : int]
@@ -936,8 +936,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_local_mouse_position") :Vec2Handle))
 (defn canvasitem/get-global-mouse-position [self : CanvasItemHandle] : Vec2Handle
   (:: (godot-call (:: self :int) "get_global_mouse_position") :Vec2Handle))
-(defn canvasitem/get-canvas [self : CanvasItemHandle] : int
-  (godot-call (:: self :int) "get_canvas"))
+(defn canvasitem/get-canvas [self : CanvasItemHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_canvas") :RidHandle))
 (defn canvasitem/get-canvas-layer-node [self : CanvasItemHandle] : CanvasLayerHandle
   (:: (godot-call (:: self :int) "get_canvas_layer_node") :CanvasLayerHandle))
 (defn canvasitem/get-world-2d [self : CanvasItemHandle] : int
@@ -1034,8 +1034,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_custom_viewport" (:: viewport :int)))
 (defn canvaslayer/get-custom-viewport [self : CanvasLayerHandle] : NodeHandle
   (:: (godot-call (:: self :int) "get_custom_viewport") :NodeHandle))
-(defn canvaslayer/get-canvas [self : CanvasLayerHandle] : int
-  (godot-call (:: self :int) "get_canvas"))
+(defn canvaslayer/get-canvas [self : CanvasLayerHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_canvas") :RidHandle))
 (defn canvaslayer/on-visibility-changed [self : CanvasLayerHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "visibility_changed" handler))
 
@@ -1484,8 +1484,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (godot-singleton "Engine") "register_singleton" name (:: instance :int)))
 (defn engine/unregister-singleton [name : cstr]
   (godot-call-v (godot-singleton "Engine") "unregister_singleton" name))
-(defn engine/get-singleton-list [] : int
-  (godot-call (godot-singleton "Engine") "get_singleton_list"))
+(defn engine/get-singleton-list [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "Engine") "get_singleton_list") :PackedStringHandle))
 (defn engine/register-script-language [language : int] : int
   (godot-call (godot-singleton "Engine") "register_script_language" language))
 (defn engine/unregister-script-language [language : int] : int
@@ -1876,16 +1876,16 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
 ;; ---- FileAccess (56 methods, 0 signals) ----
 (defn fileaccess/open [path : cstr flags : int] : FileAccessHandle
   (:: (godot-call (godot-singleton "FileAccess") "open" path flags) :FileAccessHandle))
-(defn fileaccess/open-encrypted [path : cstr mode-flags : int key : int] : FileAccessHandle
-  (:: (godot-call (godot-singleton "FileAccess") "open_encrypted" path mode-flags key) :FileAccessHandle))
+(defn fileaccess/open-encrypted [path : cstr mode-flags : int key : PackedByteHandle] : FileAccessHandle
+  (:: (godot-call (godot-singleton "FileAccess") "open_encrypted" path mode-flags (:: key :int)) :FileAccessHandle))
 (defn fileaccess/open-encrypted-with-pass [path : cstr mode-flags : int pass : cstr] : FileAccessHandle
   (:: (godot-call (godot-singleton "FileAccess") "open_encrypted_with_pass" path mode-flags pass) :FileAccessHandle))
 (defn fileaccess/open-compressed [path : cstr mode-flags : int compression-mode : int] : FileAccessHandle
   (:: (godot-call (godot-singleton "FileAccess") "open_compressed" path mode-flags compression-mode) :FileAccessHandle))
 (defn fileaccess/get-open-error [] : int
   (godot-call (godot-singleton "FileAccess") "get_open_error"))
-(defn fileaccess/get-file-as-bytes [path : cstr] : int
-  (godot-call (godot-singleton "FileAccess") "get_file_as_bytes" path))
+(defn fileaccess/get-file-as-bytes [path : cstr] : PackedByteHandle
+  (:: (godot-call (godot-singleton "FileAccess") "get_file_as_bytes" path) :PackedByteHandle))
 (defn fileaccess/get-file-as-string [path : cstr] : cstr
   (godot-call-c (godot-singleton "FileAccess") "get_file_as_string" path))
 (defn fileaccess/resize [self : FileAccessHandle length : int] : int
@@ -1920,12 +1920,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-f (:: self :int) "get_double"))
 (defn fileaccess/get-real [self : FileAccessHandle] : float
   (godot-call-f (:: self :int) "get_real"))
-(defn fileaccess/get-buffer [self : FileAccessHandle length : int] : int
-  (godot-call (:: self :int) "get_buffer" length))
+(defn fileaccess/get-buffer [self : FileAccessHandle length : int] : PackedByteHandle
+  (:: (godot-call (:: self :int) "get_buffer" length) :PackedByteHandle))
 (defn fileaccess/get-line [self : FileAccessHandle] : cstr
   (godot-call-c (:: self :int) "get_line"))
-(defn fileaccess/get-csv-line [self : FileAccessHandle delim : cstr] : int
-  (godot-call (:: self :int) "get_csv_line" delim))
+(defn fileaccess/get-csv-line [self : FileAccessHandle delim : cstr] : PackedStringHandle
+  (:: (godot-call (:: self :int) "get_csv_line" delim) :PackedStringHandle))
 (defn fileaccess/get-as-text [self : FileAccessHandle skip-cr : bool] : cstr
   (godot-call-c (:: self :int) "get_as_text" skip-cr))
 (defn fileaccess/get-md5 [path : cstr] : cstr
@@ -1954,12 +1954,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "store_double" value))
 (defn fileaccess/store-real [self : FileAccessHandle value : float]
   (godot-call-v (:: self :int) "store_real" value))
-(defn fileaccess/store-buffer [self : FileAccessHandle buffer : int]
-  (godot-call-v (:: self :int) "store_buffer" buffer))
+(defn fileaccess/store-buffer [self : FileAccessHandle buffer : PackedByteHandle]
+  (godot-call-v (:: self :int) "store_buffer" (:: buffer :int)))
 (defn fileaccess/store-line [self : FileAccessHandle line : cstr]
   (godot-call-v (:: self :int) "store_line" line))
-(defn fileaccess/store-csv-line [self : FileAccessHandle values : int delim : cstr]
-  (godot-call-v (:: self :int) "store_csv_line" values delim))
+(defn fileaccess/store-csv-line [self : FileAccessHandle values : PackedStringHandle delim : cstr]
+  (godot-call-v (:: self :int) "store_csv_line" (:: values :int) delim))
 (defn fileaccess/store-string [self : FileAccessHandle string : cstr]
   (godot-call-v (:: self :int) "store_string" string))
 (defn fileaccess/store-var [self : FileAccessHandle value : int full-objects : bool]
@@ -1996,7 +1996,7 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "remove_resource_tooltip_plugin" plugin))
 (defn filesystemdock/on-inherit [self : FileSystemDockHandle handler : (fn [cstr] void)] : void
   (godot-connect-typed (:: self :int) "inherit" handler))
-(defn filesystemdock/on-instantiate [self : FileSystemDockHandle handler : (fn [int] void)] : void
+(defn filesystemdock/on-instantiate [self : FileSystemDockHandle handler : (fn [PackedStringHandle] void)] : void
   (godot-connect-typed (:: self :int) "instantiate" handler))
 (defn filesystemdock/on-resource-removed [self : FileSystemDockHandle handler : (fn [ResourceHandle] void)] : void
   (godot-connect-typed (:: self :int) "resource_removed" handler))
@@ -2132,8 +2132,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (:: self :int) "has_mipmaps"))
 (defn image/get-format [self : ImageHandle] : int
   (godot-call (:: self :int) "get_format"))
-(defn image/get-data [self : ImageHandle] : int
-  (godot-call (:: self :int) "get_data"))
+(defn image/get-data [self : ImageHandle] : PackedByteHandle
+  (:: (godot-call (:: self :int) "get_data") :PackedByteHandle))
 (defn image/get-data-size [self : ImageHandle] : int
   (godot-call (:: self :int) "get_data_size"))
 (defn image/convert [self : ImageHandle format : int]
@@ -2162,10 +2162,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (godot-singleton "Image") "create" width height use-mipmaps format) :ImageHandle))
 (defn image/create-empty [width : int height : int use-mipmaps : bool format : int] : ImageHandle
   (:: (godot-call (godot-singleton "Image") "create_empty" width height use-mipmaps format) :ImageHandle))
-(defn image/create-from-data [width : int height : int use-mipmaps : bool format : int data : int] : ImageHandle
-  (:: (godot-call (godot-singleton "Image") "create_from_data" width height use-mipmaps format data) :ImageHandle))
-(defn image/set-data [self : ImageHandle width : int height : int use-mipmaps : bool format : int data : int]
-  (godot-call-v (:: self :int) "set_data" width height use-mipmaps format data))
+(defn image/create-from-data [width : int height : int use-mipmaps : bool format : int data : PackedByteHandle] : ImageHandle
+  (:: (godot-call (godot-singleton "Image") "create_from_data" width height use-mipmaps format (:: data :int)) :ImageHandle))
+(defn image/set-data [self : ImageHandle width : int height : int use-mipmaps : bool format : int data : PackedByteHandle]
+  (godot-call-v (:: self :int) "set_data" width height use-mipmaps format (:: data :int)))
 (defn image/is-empty [self : ImageHandle] : bool
   (godot-call-b (:: self :int) "is_empty"))
 (defn image/load [self : ImageHandle path : cstr] : int
@@ -2174,20 +2174,20 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (godot-singleton "Image") "load_from_file" path) :ImageHandle))
 (defn image/save-png [self : ImageHandle path : cstr] : int
   (godot-call (:: self :int) "save_png" path))
-(defn image/save-png-to-buffer [self : ImageHandle] : int
-  (godot-call (:: self :int) "save_png_to_buffer"))
+(defn image/save-png-to-buffer [self : ImageHandle] : PackedByteHandle
+  (:: (godot-call (:: self :int) "save_png_to_buffer") :PackedByteHandle))
 (defn image/save-jpg [self : ImageHandle path : cstr quality : float] : int
   (godot-call (:: self :int) "save_jpg" path quality))
-(defn image/save-jpg-to-buffer [self : ImageHandle quality : float] : int
-  (godot-call (:: self :int) "save_jpg_to_buffer" quality))
+(defn image/save-jpg-to-buffer [self : ImageHandle quality : float] : PackedByteHandle
+  (:: (godot-call (:: self :int) "save_jpg_to_buffer" quality) :PackedByteHandle))
 (defn image/save-exr [self : ImageHandle path : cstr grayscale : bool] : int
   (godot-call (:: self :int) "save_exr" path grayscale))
-(defn image/save-exr-to-buffer [self : ImageHandle grayscale : bool] : int
-  (godot-call (:: self :int) "save_exr_to_buffer" grayscale))
+(defn image/save-exr-to-buffer [self : ImageHandle grayscale : bool] : PackedByteHandle
+  (:: (godot-call (:: self :int) "save_exr_to_buffer" grayscale) :PackedByteHandle))
 (defn image/save-webp [self : ImageHandle path : cstr lossy : bool quality : float] : int
   (godot-call (:: self :int) "save_webp" path lossy quality))
-(defn image/save-webp-to-buffer [self : ImageHandle lossy : bool quality : float] : int
-  (godot-call (:: self :int) "save_webp_to_buffer" lossy quality))
+(defn image/save-webp-to-buffer [self : ImageHandle lossy : bool quality : float] : PackedByteHandle
+  (:: (godot-call (:: self :int) "save_webp_to_buffer" lossy quality) :PackedByteHandle))
 (defn image/detect-alpha [self : ImageHandle] : int
   (godot-call (:: self :int) "detect_alpha"))
 (defn image/is-invisible [self : ImageHandle] : bool
@@ -2248,20 +2248,20 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_pixel" x y (:: color :int)))
 (defn image/adjust-bcs [self : ImageHandle brightness : float contrast : float saturation : float]
   (godot-call-v (:: self :int) "adjust_bcs" brightness contrast saturation))
-(defn image/load-png-from-buffer [self : ImageHandle buffer : int] : int
-  (godot-call (:: self :int) "load_png_from_buffer" buffer))
-(defn image/load-jpg-from-buffer [self : ImageHandle buffer : int] : int
-  (godot-call (:: self :int) "load_jpg_from_buffer" buffer))
-(defn image/load-webp-from-buffer [self : ImageHandle buffer : int] : int
-  (godot-call (:: self :int) "load_webp_from_buffer" buffer))
-(defn image/load-tga-from-buffer [self : ImageHandle buffer : int] : int
-  (godot-call (:: self :int) "load_tga_from_buffer" buffer))
-(defn image/load-bmp-from-buffer [self : ImageHandle buffer : int] : int
-  (godot-call (:: self :int) "load_bmp_from_buffer" buffer))
-(defn image/load-ktx-from-buffer [self : ImageHandle buffer : int] : int
-  (godot-call (:: self :int) "load_ktx_from_buffer" buffer))
-(defn image/load-svg-from-buffer [self : ImageHandle buffer : int scale : float] : int
-  (godot-call (:: self :int) "load_svg_from_buffer" buffer scale))
+(defn image/load-png-from-buffer [self : ImageHandle buffer : PackedByteHandle] : int
+  (godot-call (:: self :int) "load_png_from_buffer" (:: buffer :int)))
+(defn image/load-jpg-from-buffer [self : ImageHandle buffer : PackedByteHandle] : int
+  (godot-call (:: self :int) "load_jpg_from_buffer" (:: buffer :int)))
+(defn image/load-webp-from-buffer [self : ImageHandle buffer : PackedByteHandle] : int
+  (godot-call (:: self :int) "load_webp_from_buffer" (:: buffer :int)))
+(defn image/load-tga-from-buffer [self : ImageHandle buffer : PackedByteHandle] : int
+  (godot-call (:: self :int) "load_tga_from_buffer" (:: buffer :int)))
+(defn image/load-bmp-from-buffer [self : ImageHandle buffer : PackedByteHandle] : int
+  (godot-call (:: self :int) "load_bmp_from_buffer" (:: buffer :int)))
+(defn image/load-ktx-from-buffer [self : ImageHandle buffer : PackedByteHandle] : int
+  (godot-call (:: self :int) "load_ktx_from_buffer" (:: buffer :int)))
+(defn image/load-svg-from-buffer [self : ImageHandle buffer : PackedByteHandle scale : float] : int
+  (godot-call (:: self :int) "load_svg_from_buffer" (:: buffer :int) scale))
 (defn image/load-svg-from-string [self : ImageHandle svg-str : cstr scale : float] : int
   (godot-call (:: self :int) "load_svg_from_string" svg-str scale))
 
@@ -2512,10 +2512,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_clip_text" enable))
 (defn label/is-clipping-text [self : LabelHandle] : bool
   (godot-call-b (:: self :int) "is_clipping_text"))
-(defn label/set-tab-stops [self : LabelHandle tab-stops : int]
-  (godot-call-v (:: self :int) "set_tab_stops" tab-stops))
-(defn label/get-tab-stops [self : LabelHandle] : int
-  (godot-call (:: self :int) "get_tab_stops"))
+(defn label/set-tab-stops [self : LabelHandle tab-stops : PackedFloat32Handle]
+  (godot-call-v (:: self :int) "set_tab_stops" (:: tab-stops :int)))
+(defn label/get-tab-stops [self : LabelHandle] : PackedFloat32Handle
+  (:: (godot-call (:: self :int) "get_tab_stops") :PackedFloat32Handle))
 (defn label/set-text-overrun-behavior [self : LabelHandle overrun-behavior : int]
   (godot-call-v (:: self :int) "set_text_overrun_behavior" overrun-behavior))
 (defn label/get-text-overrun-behavior [self : LabelHandle] : int
@@ -2646,8 +2646,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-connect-typed (:: self :int) "texture_changed" handler))
 
 ;; ---- NavigationAgent2D (71 methods, 6 signals) ----
-(defn navigationagent2d/get-rid [self : NavigationAgent2DHandle] : int
-  (godot-call (:: self :int) "get_rid"))
+(defn navigationagent2d/get-rid [self : NavigationAgent2DHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_rid") :RidHandle))
 (defn navigationagent2d/set-avoidance-enabled [self : NavigationAgent2DHandle enabled : bool]
   (godot-call-v (:: self :int) "set_avoidance_enabled" enabled))
 (defn navigationagent2d/get-avoidance-enabled [self : NavigationAgent2DHandle] : bool
@@ -2708,10 +2708,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_path_metadata_flags" flags))
 (defn navigationagent2d/get-path-metadata-flags [self : NavigationAgent2DHandle] : int
   (godot-call (:: self :int) "get_path_metadata_flags"))
-(defn navigationagent2d/set-navigation-map [self : NavigationAgent2DHandle navigation-map : int]
-  (godot-call-v (:: self :int) "set_navigation_map" navigation-map))
-(defn navigationagent2d/get-navigation-map [self : NavigationAgent2DHandle] : int
-  (godot-call (:: self :int) "get_navigation_map"))
+(defn navigationagent2d/set-navigation-map [self : NavigationAgent2DHandle navigation-map : RidHandle]
+  (godot-call-v (:: self :int) "set_navigation_map" (:: navigation-map :int)))
+(defn navigationagent2d/get-navigation-map [self : NavigationAgent2DHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_navigation_map") :RidHandle))
 (defn navigationagent2d/set-target-position [self : NavigationAgent2DHandle position : Vec2Handle]
   (godot-call-v (:: self :int) "set_target_position" (:: position :int)))
 (defn navigationagent2d/get-target-position [self : NavigationAgent2DHandle] : Vec2Handle
@@ -2736,8 +2736,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-f (:: self :int) "distance_to_target"))
 (defn navigationagent2d/get-current-navigation-result [self : NavigationAgent2DHandle] : int
   (godot-call (:: self :int) "get_current_navigation_result"))
-(defn navigationagent2d/get-current-navigation-path [self : NavigationAgent2DHandle] : int
-  (godot-call (:: self :int) "get_current_navigation_path"))
+(defn navigationagent2d/get-current-navigation-path [self : NavigationAgent2DHandle] : PackedVec2Handle
+  (:: (godot-call (:: self :int) "get_current_navigation_path") :PackedVec2Handle))
 (defn navigationagent2d/get-current-navigation-path-index [self : NavigationAgent2DHandle] : int
   (godot-call (:: self :int) "get_current_navigation_path_index"))
 (defn navigationagent2d/is-target-reached [self : NavigationAgent2DHandle] : bool
@@ -2802,8 +2802,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-connect-typed (:: self :int) "velocity_computed" handler))
 
 ;; ---- NavigationRegion2D (20 methods, 2 signals) ----
-(defn navigationregion2d/get-rid [self : NavigationRegion2DHandle] : int
-  (godot-call (:: self :int) "get_rid"))
+(defn navigationregion2d/get-rid [self : NavigationRegion2DHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_rid") :RidHandle))
 (defn navigationregion2d/set-navigation-polygon [self : NavigationRegion2DHandle navigation-polygon : int]
   (godot-call-v (:: self :int) "set_navigation_polygon" navigation-polygon))
 (defn navigationregion2d/get-navigation-polygon [self : NavigationRegion2DHandle] : int
@@ -2812,10 +2812,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_enabled" enabled))
 (defn navigationregion2d/is-enabled [self : NavigationRegion2DHandle] : bool
   (godot-call-b (:: self :int) "is_enabled"))
-(defn navigationregion2d/set-navigation-map [self : NavigationRegion2DHandle navigation-map : int]
-  (godot-call-v (:: self :int) "set_navigation_map" navigation-map))
-(defn navigationregion2d/get-navigation-map [self : NavigationRegion2DHandle] : int
-  (godot-call (:: self :int) "get_navigation_map"))
+(defn navigationregion2d/set-navigation-map [self : NavigationRegion2DHandle navigation-map : RidHandle]
+  (godot-call-v (:: self :int) "set_navigation_map" (:: navigation-map :int)))
+(defn navigationregion2d/get-navigation-map [self : NavigationRegion2DHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_navigation_map") :RidHandle))
 (defn navigationregion2d/set-use-edge-connections [self : NavigationRegion2DHandle enabled : bool]
   (godot-call-v (:: self :int) "set_use_edge_connections" enabled))
 (defn navigationregion2d/get-use-edge-connections [self : NavigationRegion2DHandle] : bool
@@ -2828,8 +2828,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_navigation_layer_value" layer-number value))
 (defn navigationregion2d/get-navigation-layer-value [self : NavigationRegion2DHandle layer-number : int] : bool
   (godot-call-b (:: self :int) "get_navigation_layer_value" layer-number))
-(defn navigationregion2d/get-region-rid [self : NavigationRegion2DHandle] : int
-  (godot-call (:: self :int) "get_region_rid"))
+(defn navigationregion2d/get-region-rid [self : NavigationRegion2DHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_region_rid") :RidHandle))
 (defn navigationregion2d/set-enter-cost [self : NavigationRegion2DHandle enter-cost : float]
   (godot-call-v (:: self :int) "set_enter_cost" enter-cost))
 (defn navigationregion2d/get-enter-cost [self : NavigationRegion2DHandle] : float
@@ -3148,12 +3148,12 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_relative_transform_to_parent" (:: parent :int)) :Transform2DHandle))
 
 ;; ---- OS (73 methods, 0 signals) ----
-(defn os/get-entropy [size : int] : int
-  (godot-call (godot-singleton "OS") "get_entropy" size))
+(defn os/get-entropy [size : int] : PackedByteHandle
+  (:: (godot-call (godot-singleton "OS") "get_entropy" size) :PackedByteHandle))
 (defn os/get-system-ca-certificates [] : cstr
   (godot-call-c (godot-singleton "OS") "get_system_ca_certificates"))
-(defn os/get-connected-midi-inputs [] : int
-  (godot-call (godot-singleton "OS") "get_connected_midi_inputs"))
+(defn os/get-connected-midi-inputs [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_connected_midi_inputs") :PackedStringHandle))
 (defn os/open-midi-inputs []
   (godot-call-v (godot-singleton "OS") "open_midi_inputs"))
 (defn os/close-midi-inputs []
@@ -3178,24 +3178,24 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (godot-singleton "OS") "get_processor_count"))
 (defn os/get-processor-name [] : cstr
   (godot-call-c (godot-singleton "OS") "get_processor_name"))
-(defn os/get-system-fonts [] : int
-  (godot-call (godot-singleton "OS") "get_system_fonts"))
+(defn os/get-system-fonts [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_system_fonts") :PackedStringHandle))
 (defn os/get-system-font-path [font-name : cstr weight : int stretch : int italic : bool] : cstr
   (godot-call-c (godot-singleton "OS") "get_system_font_path" font-name weight stretch italic))
-(defn os/get-system-font-path-for-text [font-name : cstr text : cstr locale : cstr script : cstr weight : int stretch : int italic : bool] : int
-  (godot-call (godot-singleton "OS") "get_system_font_path_for_text" font-name text locale script weight stretch italic))
+(defn os/get-system-font-path-for-text [font-name : cstr text : cstr locale : cstr script : cstr weight : int stretch : int italic : bool] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_system_font_path_for_text" font-name text locale script weight stretch italic) :PackedStringHandle))
 (defn os/get-executable-path [] : cstr
   (godot-call-c (godot-singleton "OS") "get_executable_path"))
 (defn os/read-string-from-stdin [] : cstr
   (godot-call-c (godot-singleton "OS") "read_string_from_stdin"))
-(defn os/execute [path : cstr arguments : int output : ArrayHandle read-stderr : bool open-console : bool] : int
-  (godot-call (godot-singleton "OS") "execute" path arguments (:: output :int) read-stderr open-console))
-(defn os/execute-with-pipe [path : cstr arguments : int] : DictHandle
-  (:: (godot-call (godot-singleton "OS") "execute_with_pipe" path arguments) :DictHandle))
-(defn os/create-process [path : cstr arguments : int open-console : bool] : int
-  (godot-call (godot-singleton "OS") "create_process" path arguments open-console))
-(defn os/create-instance [arguments : int] : int
-  (godot-call (godot-singleton "OS") "create_instance" arguments))
+(defn os/execute [path : cstr arguments : PackedStringHandle output : ArrayHandle read-stderr : bool open-console : bool] : int
+  (godot-call (godot-singleton "OS") "execute" path (:: arguments :int) (:: output :int) read-stderr open-console))
+(defn os/execute-with-pipe [path : cstr arguments : PackedStringHandle] : DictHandle
+  (:: (godot-call (godot-singleton "OS") "execute_with_pipe" path (:: arguments :int)) :DictHandle))
+(defn os/create-process [path : cstr arguments : PackedStringHandle open-console : bool] : int
+  (godot-call (godot-singleton "OS") "create_process" path (:: arguments :int) open-console))
+(defn os/create-instance [arguments : PackedStringHandle] : int
+  (godot-call (godot-singleton "OS") "create_instance" (:: arguments :int)))
 (defn os/kill [pid : int] : int
   (godot-call (godot-singleton "OS") "kill" pid))
 (defn os/shell-open [uri : cstr] : int
@@ -3220,18 +3220,18 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-c (godot-singleton "OS") "get_distribution_name"))
 (defn os/get-version [] : cstr
   (godot-call-c (godot-singleton "OS") "get_version"))
-(defn os/get-cmdline-args [] : int
-  (godot-call (godot-singleton "OS") "get_cmdline_args"))
-(defn os/get-cmdline-user-args [] : int
-  (godot-call (godot-singleton "OS") "get_cmdline_user_args"))
-(defn os/get-video-adapter-driver-info [] : int
-  (godot-call (godot-singleton "OS") "get_video_adapter_driver_info"))
-(defn os/set-restart-on-exit [restart : bool arguments : int]
-  (godot-call-v (godot-singleton "OS") "set_restart_on_exit" restart arguments))
+(defn os/get-cmdline-args [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_cmdline_args") :PackedStringHandle))
+(defn os/get-cmdline-user-args [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_cmdline_user_args") :PackedStringHandle))
+(defn os/get-video-adapter-driver-info [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_video_adapter_driver_info") :PackedStringHandle))
+(defn os/set-restart-on-exit [restart : bool arguments : PackedStringHandle]
+  (godot-call-v (godot-singleton "OS") "set_restart_on_exit" restart (:: arguments :int)))
 (defn os/is-restart-on-exit-set [] : bool
   (godot-call-b (godot-singleton "OS") "is_restart_on_exit_set"))
-(defn os/get-restart-on-exit-arguments [] : int
-  (godot-call (godot-singleton "OS") "get_restart_on_exit_arguments"))
+(defn os/get-restart-on-exit-arguments [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_restart_on_exit_arguments") :PackedStringHandle))
 (defn os/delay-usec [usec : int]
   (godot-call-v (godot-singleton "OS") "delay_usec" usec))
 (defn os/delay-msec [msec : int]
@@ -3290,8 +3290,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-b (godot-singleton "OS") "request_permission" name))
 (defn os/request-permissions [] : bool
   (godot-call-b (godot-singleton "OS") "request_permissions"))
-(defn os/get-granted-permissions [] : int
-  (godot-call (godot-singleton "OS") "get_granted_permissions"))
+(defn os/get-granted-permissions [] : PackedStringHandle
+  (:: (godot-call (godot-singleton "OS") "get_granted_permissions") :PackedStringHandle))
 (defn os/revoke-granted-permissions []
   (godot-call-v (godot-singleton "OS") "revoke_granted_permissions"))
 
@@ -3410,240 +3410,240 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "remove_collision_exception_with" (:: body :int)))
 
 ;; ---- PhysicsServer2D (119 methods, 0 signals) ----
-(defn physicsserver2d/world-boundary-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "world_boundary_shape_create"))
-(defn physicsserver2d/separation-ray-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "separation_ray_shape_create"))
-(defn physicsserver2d/segment-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "segment_shape_create"))
-(defn physicsserver2d/circle-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "circle_shape_create"))
-(defn physicsserver2d/rectangle-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "rectangle_shape_create"))
-(defn physicsserver2d/capsule-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "capsule_shape_create"))
-(defn physicsserver2d/convex-polygon-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "convex_polygon_shape_create"))
-(defn physicsserver2d/concave-polygon-shape-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "concave_polygon_shape_create"))
-(defn physicsserver2d/shape-set-data [shape : int data : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "shape_set_data" shape data))
-(defn physicsserver2d/shape-get-type [shape : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "shape_get_type" shape))
-(defn physicsserver2d/shape-get-data [shape : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "shape_get_data" shape))
-(defn physicsserver2d/space-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "space_create"))
-(defn physicsserver2d/space-set-active [space : int active : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "space_set_active" space active))
-(defn physicsserver2d/space-is-active [space : int] : bool
-  (godot-call-b (godot-singleton "PhysicsServer2D") "space_is_active" space))
-(defn physicsserver2d/space-set-param [space : int param : int value : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "space_set_param" space param value))
-(defn physicsserver2d/space-get-param [space : int param : int] : float
-  (godot-call-f (godot-singleton "PhysicsServer2D") "space_get_param" space param))
-(defn physicsserver2d/space-get-direct-state [space : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "space_get_direct_state" space))
-(defn physicsserver2d/area-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_create"))
-(defn physicsserver2d/area-set-space [area : int space : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_space" area space))
-(defn physicsserver2d/area-get-space [area : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_space" area))
-(defn physicsserver2d/area-add-shape [area : int shape : int transform : Transform2DHandle disabled : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_add_shape" area shape (:: transform :int) disabled))
-(defn physicsserver2d/area-set-shape [area : int shape-idx : int shape : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_shape" area shape-idx shape))
-(defn physicsserver2d/area-set-shape-transform [area : int shape-idx : int transform : Transform2DHandle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_shape_transform" area shape-idx (:: transform :int)))
-(defn physicsserver2d/area-set-shape-disabled [area : int shape-idx : int disabled : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_shape_disabled" area shape-idx disabled))
-(defn physicsserver2d/area-get-shape-count [area : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_shape_count" area))
-(defn physicsserver2d/area-get-shape [area : int shape-idx : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_shape" area shape-idx))
-(defn physicsserver2d/area-get-shape-transform [area : int shape-idx : int] : Transform2DHandle
-  (:: (godot-call (godot-singleton "PhysicsServer2D") "area_get_shape_transform" area shape-idx) :Transform2DHandle))
-(defn physicsserver2d/area-remove-shape [area : int shape-idx : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_remove_shape" area shape-idx))
-(defn physicsserver2d/area-clear-shapes [area : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_clear_shapes" area))
-(defn physicsserver2d/area-set-collision-layer [area : int layer : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_collision_layer" area layer))
-(defn physicsserver2d/area-get-collision-layer [area : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_collision_layer" area))
-(defn physicsserver2d/area-set-collision-mask [area : int mask : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_collision_mask" area mask))
-(defn physicsserver2d/area-get-collision-mask [area : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_collision_mask" area))
-(defn physicsserver2d/area-set-param [area : int param : int value : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_param" area param value))
-(defn physicsserver2d/area-set-transform [area : int transform : Transform2DHandle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_transform" area (:: transform :int)))
-(defn physicsserver2d/area-get-param [area : int param : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_param" area param))
-(defn physicsserver2d/area-get-transform [area : int] : Transform2DHandle
-  (:: (godot-call (godot-singleton "PhysicsServer2D") "area_get_transform" area) :Transform2DHandle))
-(defn physicsserver2d/area-attach-object-instance-id [area : int id : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_attach_object_instance_id" area id))
-(defn physicsserver2d/area-get-object-instance-id [area : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_object_instance_id" area))
-(defn physicsserver2d/area-attach-canvas-instance-id [area : int id : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_attach_canvas_instance_id" area id))
-(defn physicsserver2d/area-get-canvas-instance-id [area : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "area_get_canvas_instance_id" area))
-(defn physicsserver2d/area-set-monitor-callback [area : int callback : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_monitor_callback" area callback))
-(defn physicsserver2d/area-set-area-monitor-callback [area : int callback : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_area_monitor_callback" area callback))
-(defn physicsserver2d/area-set-monitorable [area : int monitorable : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_monitorable" area monitorable))
-(defn physicsserver2d/body-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_create"))
-(defn physicsserver2d/body-set-space [body : int space : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_space" body space))
-(defn physicsserver2d/body-get-space [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_space" body))
-(defn physicsserver2d/body-set-mode [body : int mode : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_mode" body mode))
-(defn physicsserver2d/body-get-mode [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_mode" body))
-(defn physicsserver2d/body-add-shape [body : int shape : int transform : Transform2DHandle disabled : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_shape" body shape (:: transform :int) disabled))
-(defn physicsserver2d/body-set-shape [body : int shape-idx : int shape : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape" body shape-idx shape))
-(defn physicsserver2d/body-set-shape-transform [body : int shape-idx : int transform : Transform2DHandle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape_transform" body shape-idx (:: transform :int)))
-(defn physicsserver2d/body-get-shape-count [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_shape_count" body))
-(defn physicsserver2d/body-get-shape [body : int shape-idx : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_shape" body shape-idx))
-(defn physicsserver2d/body-get-shape-transform [body : int shape-idx : int] : Transform2DHandle
-  (:: (godot-call (godot-singleton "PhysicsServer2D") "body_get_shape_transform" body shape-idx) :Transform2DHandle))
-(defn physicsserver2d/body-remove-shape [body : int shape-idx : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_remove_shape" body shape-idx))
-(defn physicsserver2d/body-clear-shapes [body : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_clear_shapes" body))
-(defn physicsserver2d/body-set-shape-disabled [body : int shape-idx : int disabled : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape_disabled" body shape-idx disabled))
-(defn physicsserver2d/body-set-shape-as-one-way-collision [body : int shape-idx : int enable : bool margin : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape_as_one_way_collision" body shape-idx enable margin))
-(defn physicsserver2d/body-attach-object-instance-id [body : int id : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_attach_object_instance_id" body id))
-(defn physicsserver2d/body-get-object-instance-id [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_object_instance_id" body))
-(defn physicsserver2d/body-attach-canvas-instance-id [body : int id : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_attach_canvas_instance_id" body id))
-(defn physicsserver2d/body-get-canvas-instance-id [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_canvas_instance_id" body))
-(defn physicsserver2d/body-set-continuous-collision-detection-mode [body : int mode : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_continuous_collision_detection_mode" body mode))
-(defn physicsserver2d/body-get-continuous-collision-detection-mode [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_continuous_collision_detection_mode" body))
-(defn physicsserver2d/body-set-collision-layer [body : int layer : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_collision_layer" body layer))
-(defn physicsserver2d/body-get-collision-layer [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_collision_layer" body))
-(defn physicsserver2d/body-set-collision-mask [body : int mask : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_collision_mask" body mask))
-(defn physicsserver2d/body-get-collision-mask [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_collision_mask" body))
-(defn physicsserver2d/body-set-collision-priority [body : int priority : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_collision_priority" body priority))
-(defn physicsserver2d/body-get-collision-priority [body : int] : float
-  (godot-call-f (godot-singleton "PhysicsServer2D") "body_get_collision_priority" body))
-(defn physicsserver2d/body-set-param [body : int param : int value : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_param" body param value))
-(defn physicsserver2d/body-get-param [body : int param : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_param" body param))
-(defn physicsserver2d/body-reset-mass-properties [body : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_reset_mass_properties" body))
-(defn physicsserver2d/body-set-state [body : int state : int value : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_state" body state value))
-(defn physicsserver2d/body-get-state [body : int state : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_state" body state))
-(defn physicsserver2d/body-apply-central-impulse [body : int impulse : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_central_impulse" body (:: impulse :int)))
-(defn physicsserver2d/body-apply-torque-impulse [body : int impulse : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_torque_impulse" body impulse))
-(defn physicsserver2d/body-apply-impulse [body : int impulse : Vec2Handle position : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_impulse" body (:: impulse :int) (:: position :int)))
-(defn physicsserver2d/body-apply-central-force [body : int force : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_central_force" body (:: force :int)))
-(defn physicsserver2d/body-apply-force [body : int force : Vec2Handle position : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_force" body (:: force :int) (:: position :int)))
-(defn physicsserver2d/body-apply-torque [body : int torque : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_torque" body torque))
-(defn physicsserver2d/body-add-constant-central-force [body : int force : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_constant_central_force" body (:: force :int)))
-(defn physicsserver2d/body-add-constant-force [body : int force : Vec2Handle position : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_constant_force" body (:: force :int) (:: position :int)))
-(defn physicsserver2d/body-add-constant-torque [body : int torque : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_constant_torque" body torque))
-(defn physicsserver2d/body-set-constant-force [body : int force : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_constant_force" body (:: force :int)))
-(defn physicsserver2d/body-get-constant-force [body : int] : Vec2Handle
-  (:: (godot-call (godot-singleton "PhysicsServer2D") "body_get_constant_force" body) :Vec2Handle))
-(defn physicsserver2d/body-set-constant-torque [body : int torque : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_constant_torque" body torque))
-(defn physicsserver2d/body-get-constant-torque [body : int] : float
-  (godot-call-f (godot-singleton "PhysicsServer2D") "body_get_constant_torque" body))
-(defn physicsserver2d/body-set-axis-velocity [body : int axis-velocity : Vec2Handle]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_axis_velocity" body (:: axis-velocity :int)))
-(defn physicsserver2d/body-add-collision-exception [body : int excepted-body : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_collision_exception" body excepted-body))
-(defn physicsserver2d/body-remove-collision-exception [body : int excepted-body : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_remove_collision_exception" body excepted-body))
-(defn physicsserver2d/body-set-max-contacts-reported [body : int amount : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_max_contacts_reported" body amount))
-(defn physicsserver2d/body-get-max-contacts-reported [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_max_contacts_reported" body))
-(defn physicsserver2d/body-set-omit-force-integration [body : int enable : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_omit_force_integration" body enable))
-(defn physicsserver2d/body-is-omitting-force-integration [body : int] : bool
-  (godot-call-b (godot-singleton "PhysicsServer2D") "body_is_omitting_force_integration" body))
-(defn physicsserver2d/body-set-state-sync-callback [body : int callable : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_state_sync_callback" body callable))
-(defn physicsserver2d/body-set-force-integration-callback [body : int callable : int userdata : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_force_integration_callback" body callable userdata))
-(defn physicsserver2d/body-test-motion [body : int parameters : int result : int] : bool
-  (godot-call-b (godot-singleton "PhysicsServer2D") "body_test_motion" body parameters result))
-(defn physicsserver2d/body-get-direct-state [body : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "body_get_direct_state" body))
-(defn physicsserver2d/joint-create [] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "joint_create"))
-(defn physicsserver2d/joint-clear [joint : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_clear" joint))
-(defn physicsserver2d/joint-set-param [joint : int param : int value : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_set_param" joint param value))
-(defn physicsserver2d/joint-get-param [joint : int param : int] : float
-  (godot-call-f (godot-singleton "PhysicsServer2D") "joint_get_param" joint param))
-(defn physicsserver2d/joint-disable-collisions-between-bodies [joint : int disable : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_disable_collisions_between_bodies" joint disable))
-(defn physicsserver2d/joint-is-disabled-collisions-between-bodies [joint : int] : bool
-  (godot-call-b (godot-singleton "PhysicsServer2D") "joint_is_disabled_collisions_between_bodies" joint))
-(defn physicsserver2d/joint-make-pin [joint : int anchor : Vec2Handle body-a : int body-b : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_make_pin" joint (:: anchor :int) body-a body-b))
-(defn physicsserver2d/joint-make-groove [joint : int groove1-a : Vec2Handle groove2-a : Vec2Handle anchor-b : Vec2Handle body-a : int body-b : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_make_groove" joint (:: groove1-a :int) (:: groove2-a :int) (:: anchor-b :int) body-a body-b))
-(defn physicsserver2d/joint-make-damped-spring [joint : int anchor-a : Vec2Handle anchor-b : Vec2Handle body-a : int body-b : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_make_damped_spring" joint (:: anchor-a :int) (:: anchor-b :int) body-a body-b))
-(defn physicsserver2d/pin-joint-set-flag [joint : int flag : int enabled : bool]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "pin_joint_set_flag" joint flag enabled))
-(defn physicsserver2d/pin-joint-get-flag [joint : int flag : int] : bool
-  (godot-call-b (godot-singleton "PhysicsServer2D") "pin_joint_get_flag" joint flag))
-(defn physicsserver2d/pin-joint-set-param [joint : int param : int value : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "pin_joint_set_param" joint param value))
-(defn physicsserver2d/pin-joint-get-param [joint : int param : int] : float
-  (godot-call-f (godot-singleton "PhysicsServer2D") "pin_joint_get_param" joint param))
-(defn physicsserver2d/damped-spring-joint-set-param [joint : int param : int value : float]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "damped_spring_joint_set_param" joint param value))
-(defn physicsserver2d/damped-spring-joint-get-param [joint : int param : int] : float
-  (godot-call-f (godot-singleton "PhysicsServer2D") "damped_spring_joint_get_param" joint param))
-(defn physicsserver2d/joint-get-type [joint : int] : int
-  (godot-call (godot-singleton "PhysicsServer2D") "joint_get_type" joint))
-(defn physicsserver2d/free-rid [rid : int]
-  (godot-call-v (godot-singleton "PhysicsServer2D") "free_rid" rid))
+(defn physicsserver2d/world-boundary-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "world_boundary_shape_create") :RidHandle))
+(defn physicsserver2d/separation-ray-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "separation_ray_shape_create") :RidHandle))
+(defn physicsserver2d/segment-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "segment_shape_create") :RidHandle))
+(defn physicsserver2d/circle-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "circle_shape_create") :RidHandle))
+(defn physicsserver2d/rectangle-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "rectangle_shape_create") :RidHandle))
+(defn physicsserver2d/capsule-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "capsule_shape_create") :RidHandle))
+(defn physicsserver2d/convex-polygon-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "convex_polygon_shape_create") :RidHandle))
+(defn physicsserver2d/concave-polygon-shape-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "concave_polygon_shape_create") :RidHandle))
+(defn physicsserver2d/shape-set-data [shape : RidHandle data : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "shape_set_data" (:: shape :int) data))
+(defn physicsserver2d/shape-get-type [shape : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "shape_get_type" (:: shape :int)))
+(defn physicsserver2d/shape-get-data [shape : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "shape_get_data" (:: shape :int)))
+(defn physicsserver2d/space-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "space_create") :RidHandle))
+(defn physicsserver2d/space-set-active [space : RidHandle active : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "space_set_active" (:: space :int) active))
+(defn physicsserver2d/space-is-active [space : RidHandle] : bool
+  (godot-call-b (godot-singleton "PhysicsServer2D") "space_is_active" (:: space :int)))
+(defn physicsserver2d/space-set-param [space : RidHandle param : int value : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "space_set_param" (:: space :int) param value))
+(defn physicsserver2d/space-get-param [space : RidHandle param : int] : float
+  (godot-call-f (godot-singleton "PhysicsServer2D") "space_get_param" (:: space :int) param))
+(defn physicsserver2d/space-get-direct-state [space : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "space_get_direct_state" (:: space :int)))
+(defn physicsserver2d/area-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "area_create") :RidHandle))
+(defn physicsserver2d/area-set-space [area : RidHandle space : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_space" (:: area :int) (:: space :int)))
+(defn physicsserver2d/area-get-space [area : RidHandle] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "area_get_space" (:: area :int)) :RidHandle))
+(defn physicsserver2d/area-add-shape [area : RidHandle shape : RidHandle transform : Transform2DHandle disabled : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_add_shape" (:: area :int) (:: shape :int) (:: transform :int) disabled))
+(defn physicsserver2d/area-set-shape [area : RidHandle shape-idx : int shape : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_shape" (:: area :int) shape-idx (:: shape :int)))
+(defn physicsserver2d/area-set-shape-transform [area : RidHandle shape-idx : int transform : Transform2DHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_shape_transform" (:: area :int) shape-idx (:: transform :int)))
+(defn physicsserver2d/area-set-shape-disabled [area : RidHandle shape-idx : int disabled : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_shape_disabled" (:: area :int) shape-idx disabled))
+(defn physicsserver2d/area-get-shape-count [area : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "area_get_shape_count" (:: area :int)))
+(defn physicsserver2d/area-get-shape [area : RidHandle shape-idx : int] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "area_get_shape" (:: area :int) shape-idx) :RidHandle))
+(defn physicsserver2d/area-get-shape-transform [area : RidHandle shape-idx : int] : Transform2DHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "area_get_shape_transform" (:: area :int) shape-idx) :Transform2DHandle))
+(defn physicsserver2d/area-remove-shape [area : RidHandle shape-idx : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_remove_shape" (:: area :int) shape-idx))
+(defn physicsserver2d/area-clear-shapes [area : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_clear_shapes" (:: area :int)))
+(defn physicsserver2d/area-set-collision-layer [area : RidHandle layer : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_collision_layer" (:: area :int) layer))
+(defn physicsserver2d/area-get-collision-layer [area : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "area_get_collision_layer" (:: area :int)))
+(defn physicsserver2d/area-set-collision-mask [area : RidHandle mask : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_collision_mask" (:: area :int) mask))
+(defn physicsserver2d/area-get-collision-mask [area : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "area_get_collision_mask" (:: area :int)))
+(defn physicsserver2d/area-set-param [area : RidHandle param : int value : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_param" (:: area :int) param value))
+(defn physicsserver2d/area-set-transform [area : RidHandle transform : Transform2DHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_transform" (:: area :int) (:: transform :int)))
+(defn physicsserver2d/area-get-param [area : RidHandle param : int] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "area_get_param" (:: area :int) param))
+(defn physicsserver2d/area-get-transform [area : RidHandle] : Transform2DHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "area_get_transform" (:: area :int)) :Transform2DHandle))
+(defn physicsserver2d/area-attach-object-instance-id [area : RidHandle id : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_attach_object_instance_id" (:: area :int) id))
+(defn physicsserver2d/area-get-object-instance-id [area : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "area_get_object_instance_id" (:: area :int)))
+(defn physicsserver2d/area-attach-canvas-instance-id [area : RidHandle id : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_attach_canvas_instance_id" (:: area :int) id))
+(defn physicsserver2d/area-get-canvas-instance-id [area : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "area_get_canvas_instance_id" (:: area :int)))
+(defn physicsserver2d/area-set-monitor-callback [area : RidHandle callback : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_monitor_callback" (:: area :int) callback))
+(defn physicsserver2d/area-set-area-monitor-callback [area : RidHandle callback : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_area_monitor_callback" (:: area :int) callback))
+(defn physicsserver2d/area-set-monitorable [area : RidHandle monitorable : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "area_set_monitorable" (:: area :int) monitorable))
+(defn physicsserver2d/body-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "body_create") :RidHandle))
+(defn physicsserver2d/body-set-space [body : RidHandle space : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_space" (:: body :int) (:: space :int)))
+(defn physicsserver2d/body-get-space [body : RidHandle] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "body_get_space" (:: body :int)) :RidHandle))
+(defn physicsserver2d/body-set-mode [body : RidHandle mode : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_mode" (:: body :int) mode))
+(defn physicsserver2d/body-get-mode [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_mode" (:: body :int)))
+(defn physicsserver2d/body-add-shape [body : RidHandle shape : RidHandle transform : Transform2DHandle disabled : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_shape" (:: body :int) (:: shape :int) (:: transform :int) disabled))
+(defn physicsserver2d/body-set-shape [body : RidHandle shape-idx : int shape : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape" (:: body :int) shape-idx (:: shape :int)))
+(defn physicsserver2d/body-set-shape-transform [body : RidHandle shape-idx : int transform : Transform2DHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape_transform" (:: body :int) shape-idx (:: transform :int)))
+(defn physicsserver2d/body-get-shape-count [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_shape_count" (:: body :int)))
+(defn physicsserver2d/body-get-shape [body : RidHandle shape-idx : int] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "body_get_shape" (:: body :int) shape-idx) :RidHandle))
+(defn physicsserver2d/body-get-shape-transform [body : RidHandle shape-idx : int] : Transform2DHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "body_get_shape_transform" (:: body :int) shape-idx) :Transform2DHandle))
+(defn physicsserver2d/body-remove-shape [body : RidHandle shape-idx : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_remove_shape" (:: body :int) shape-idx))
+(defn physicsserver2d/body-clear-shapes [body : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_clear_shapes" (:: body :int)))
+(defn physicsserver2d/body-set-shape-disabled [body : RidHandle shape-idx : int disabled : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape_disabled" (:: body :int) shape-idx disabled))
+(defn physicsserver2d/body-set-shape-as-one-way-collision [body : RidHandle shape-idx : int enable : bool margin : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_shape_as_one_way_collision" (:: body :int) shape-idx enable margin))
+(defn physicsserver2d/body-attach-object-instance-id [body : RidHandle id : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_attach_object_instance_id" (:: body :int) id))
+(defn physicsserver2d/body-get-object-instance-id [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_object_instance_id" (:: body :int)))
+(defn physicsserver2d/body-attach-canvas-instance-id [body : RidHandle id : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_attach_canvas_instance_id" (:: body :int) id))
+(defn physicsserver2d/body-get-canvas-instance-id [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_canvas_instance_id" (:: body :int)))
+(defn physicsserver2d/body-set-continuous-collision-detection-mode [body : RidHandle mode : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_continuous_collision_detection_mode" (:: body :int) mode))
+(defn physicsserver2d/body-get-continuous-collision-detection-mode [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_continuous_collision_detection_mode" (:: body :int)))
+(defn physicsserver2d/body-set-collision-layer [body : RidHandle layer : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_collision_layer" (:: body :int) layer))
+(defn physicsserver2d/body-get-collision-layer [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_collision_layer" (:: body :int)))
+(defn physicsserver2d/body-set-collision-mask [body : RidHandle mask : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_collision_mask" (:: body :int) mask))
+(defn physicsserver2d/body-get-collision-mask [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_collision_mask" (:: body :int)))
+(defn physicsserver2d/body-set-collision-priority [body : RidHandle priority : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_collision_priority" (:: body :int) priority))
+(defn physicsserver2d/body-get-collision-priority [body : RidHandle] : float
+  (godot-call-f (godot-singleton "PhysicsServer2D") "body_get_collision_priority" (:: body :int)))
+(defn physicsserver2d/body-set-param [body : RidHandle param : int value : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_param" (:: body :int) param value))
+(defn physicsserver2d/body-get-param [body : RidHandle param : int] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_param" (:: body :int) param))
+(defn physicsserver2d/body-reset-mass-properties [body : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_reset_mass_properties" (:: body :int)))
+(defn physicsserver2d/body-set-state [body : RidHandle state : int value : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_state" (:: body :int) state value))
+(defn physicsserver2d/body-get-state [body : RidHandle state : int] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_state" (:: body :int) state))
+(defn physicsserver2d/body-apply-central-impulse [body : RidHandle impulse : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_central_impulse" (:: body :int) (:: impulse :int)))
+(defn physicsserver2d/body-apply-torque-impulse [body : RidHandle impulse : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_torque_impulse" (:: body :int) impulse))
+(defn physicsserver2d/body-apply-impulse [body : RidHandle impulse : Vec2Handle position : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_impulse" (:: body :int) (:: impulse :int) (:: position :int)))
+(defn physicsserver2d/body-apply-central-force [body : RidHandle force : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_central_force" (:: body :int) (:: force :int)))
+(defn physicsserver2d/body-apply-force [body : RidHandle force : Vec2Handle position : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_force" (:: body :int) (:: force :int) (:: position :int)))
+(defn physicsserver2d/body-apply-torque [body : RidHandle torque : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_apply_torque" (:: body :int) torque))
+(defn physicsserver2d/body-add-constant-central-force [body : RidHandle force : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_constant_central_force" (:: body :int) (:: force :int)))
+(defn physicsserver2d/body-add-constant-force [body : RidHandle force : Vec2Handle position : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_constant_force" (:: body :int) (:: force :int) (:: position :int)))
+(defn physicsserver2d/body-add-constant-torque [body : RidHandle torque : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_constant_torque" (:: body :int) torque))
+(defn physicsserver2d/body-set-constant-force [body : RidHandle force : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_constant_force" (:: body :int) (:: force :int)))
+(defn physicsserver2d/body-get-constant-force [body : RidHandle] : Vec2Handle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "body_get_constant_force" (:: body :int)) :Vec2Handle))
+(defn physicsserver2d/body-set-constant-torque [body : RidHandle torque : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_constant_torque" (:: body :int) torque))
+(defn physicsserver2d/body-get-constant-torque [body : RidHandle] : float
+  (godot-call-f (godot-singleton "PhysicsServer2D") "body_get_constant_torque" (:: body :int)))
+(defn physicsserver2d/body-set-axis-velocity [body : RidHandle axis-velocity : Vec2Handle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_axis_velocity" (:: body :int) (:: axis-velocity :int)))
+(defn physicsserver2d/body-add-collision-exception [body : RidHandle excepted-body : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_add_collision_exception" (:: body :int) (:: excepted-body :int)))
+(defn physicsserver2d/body-remove-collision-exception [body : RidHandle excepted-body : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_remove_collision_exception" (:: body :int) (:: excepted-body :int)))
+(defn physicsserver2d/body-set-max-contacts-reported [body : RidHandle amount : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_max_contacts_reported" (:: body :int) amount))
+(defn physicsserver2d/body-get-max-contacts-reported [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_max_contacts_reported" (:: body :int)))
+(defn physicsserver2d/body-set-omit-force-integration [body : RidHandle enable : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_omit_force_integration" (:: body :int) enable))
+(defn physicsserver2d/body-is-omitting-force-integration [body : RidHandle] : bool
+  (godot-call-b (godot-singleton "PhysicsServer2D") "body_is_omitting_force_integration" (:: body :int)))
+(defn physicsserver2d/body-set-state-sync-callback [body : RidHandle callable : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_state_sync_callback" (:: body :int) callable))
+(defn physicsserver2d/body-set-force-integration-callback [body : RidHandle callable : int userdata : int]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "body_set_force_integration_callback" (:: body :int) callable userdata))
+(defn physicsserver2d/body-test-motion [body : RidHandle parameters : int result : int] : bool
+  (godot-call-b (godot-singleton "PhysicsServer2D") "body_test_motion" (:: body :int) parameters result))
+(defn physicsserver2d/body-get-direct-state [body : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "body_get_direct_state" (:: body :int)))
+(defn physicsserver2d/joint-create [] : RidHandle
+  (:: (godot-call (godot-singleton "PhysicsServer2D") "joint_create") :RidHandle))
+(defn physicsserver2d/joint-clear [joint : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_clear" (:: joint :int)))
+(defn physicsserver2d/joint-set-param [joint : RidHandle param : int value : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_set_param" (:: joint :int) param value))
+(defn physicsserver2d/joint-get-param [joint : RidHandle param : int] : float
+  (godot-call-f (godot-singleton "PhysicsServer2D") "joint_get_param" (:: joint :int) param))
+(defn physicsserver2d/joint-disable-collisions-between-bodies [joint : RidHandle disable : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_disable_collisions_between_bodies" (:: joint :int) disable))
+(defn physicsserver2d/joint-is-disabled-collisions-between-bodies [joint : RidHandle] : bool
+  (godot-call-b (godot-singleton "PhysicsServer2D") "joint_is_disabled_collisions_between_bodies" (:: joint :int)))
+(defn physicsserver2d/joint-make-pin [joint : RidHandle anchor : Vec2Handle body-a : RidHandle body-b : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_make_pin" (:: joint :int) (:: anchor :int) (:: body-a :int) (:: body-b :int)))
+(defn physicsserver2d/joint-make-groove [joint : RidHandle groove1-a : Vec2Handle groove2-a : Vec2Handle anchor-b : Vec2Handle body-a : RidHandle body-b : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_make_groove" (:: joint :int) (:: groove1-a :int) (:: groove2-a :int) (:: anchor-b :int) (:: body-a :int) (:: body-b :int)))
+(defn physicsserver2d/joint-make-damped-spring [joint : RidHandle anchor-a : Vec2Handle anchor-b : Vec2Handle body-a : RidHandle body-b : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "joint_make_damped_spring" (:: joint :int) (:: anchor-a :int) (:: anchor-b :int) (:: body-a :int) (:: body-b :int)))
+(defn physicsserver2d/pin-joint-set-flag [joint : RidHandle flag : int enabled : bool]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "pin_joint_set_flag" (:: joint :int) flag enabled))
+(defn physicsserver2d/pin-joint-get-flag [joint : RidHandle flag : int] : bool
+  (godot-call-b (godot-singleton "PhysicsServer2D") "pin_joint_get_flag" (:: joint :int) flag))
+(defn physicsserver2d/pin-joint-set-param [joint : RidHandle param : int value : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "pin_joint_set_param" (:: joint :int) param value))
+(defn physicsserver2d/pin-joint-get-param [joint : RidHandle param : int] : float
+  (godot-call-f (godot-singleton "PhysicsServer2D") "pin_joint_get_param" (:: joint :int) param))
+(defn physicsserver2d/damped-spring-joint-set-param [joint : RidHandle param : int value : float]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "damped_spring_joint_set_param" (:: joint :int) param value))
+(defn physicsserver2d/damped-spring-joint-get-param [joint : RidHandle param : int] : float
+  (godot-call-f (godot-singleton "PhysicsServer2D") "damped_spring_joint_get_param" (:: joint :int) param))
+(defn physicsserver2d/joint-get-type [joint : RidHandle] : int
+  (godot-call (godot-singleton "PhysicsServer2D") "joint_get_type" (:: joint :int)))
+(defn physicsserver2d/free-rid [rid : RidHandle]
+  (godot-call-v (godot-singleton "PhysicsServer2D") "free_rid" (:: rid :int)))
 (defn physicsserver2d/set-active [active : bool]
   (godot-call-v (godot-singleton "PhysicsServer2D") "set_active" active))
 (defn physicsserver2d/get-process-info [process-info : int] : int
@@ -3668,8 +3668,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-f (:: self :int) "randf_range" from to))
 (defn randomnumbergenerator/randi-range [self : RandomNumberGeneratorHandle from : int to : int] : int
   (godot-call (:: self :int) "randi_range" from to))
-(defn randomnumbergenerator/rand-weighted [self : RandomNumberGeneratorHandle weights : int] : int
-  (godot-call (:: self :int) "rand_weighted" weights))
+(defn randomnumbergenerator/rand-weighted [self : RandomNumberGeneratorHandle weights : PackedFloat32Handle] : int
+  (godot-call (:: self :int) "rand_weighted" (:: weights :int)))
 (defn randomnumbergenerator/randomize [self : RandomNumberGeneratorHandle]
   (godot-call-v (:: self :int) "randomize"))
 
@@ -3682,8 +3682,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-c (:: self :int) "get_path"))
 (defn resource/set-name [self : ResourceHandle name : cstr]
   (godot-call-v (:: self :int) "set_name" name))
-(defn resource/get-rid [self : ResourceHandle] : int
-  (godot-call (:: self :int) "get_rid"))
+(defn resource/get-rid [self : ResourceHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_rid") :RidHandle))
 (defn resource/set-local-to-scene [self : ResourceHandle enable : bool]
   (godot-call-v (:: self :int) "set_local_to_scene" enable))
 (defn resource/is-local-to-scene [self : ResourceHandle] : bool
@@ -3716,16 +3716,16 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (godot-singleton "ResourceLoader") "load_threaded_get" path) :ResourceHandle))
 (defn resourceloader/load [path : cstr type-hint : cstr cache-mode : int] : ResourceHandle
   (:: (godot-call (godot-singleton "ResourceLoader") "load" path type-hint cache-mode) :ResourceHandle))
-(defn resourceloader/get-recognized-extensions-for-type [type : cstr] : int
-  (godot-call (godot-singleton "ResourceLoader") "get_recognized_extensions_for_type" type))
+(defn resourceloader/get-recognized-extensions-for-type [type : cstr] : PackedStringHandle
+  (:: (godot-call (godot-singleton "ResourceLoader") "get_recognized_extensions_for_type" type) :PackedStringHandle))
 (defn resourceloader/add-resource-format-loader [format-loader : int at-front : bool]
   (godot-call-v (godot-singleton "ResourceLoader") "add_resource_format_loader" format-loader at-front))
 (defn resourceloader/remove-resource-format-loader [format-loader : int]
   (godot-call-v (godot-singleton "ResourceLoader") "remove_resource_format_loader" format-loader))
 (defn resourceloader/set-abort-on-missing-resources [abort : bool]
   (godot-call-v (godot-singleton "ResourceLoader") "set_abort_on_missing_resources" abort))
-(defn resourceloader/get-dependencies [path : cstr] : int
-  (godot-call (godot-singleton "ResourceLoader") "get_dependencies" path))
+(defn resourceloader/get-dependencies [path : cstr] : PackedStringHandle
+  (:: (godot-call (godot-singleton "ResourceLoader") "get_dependencies" path) :PackedStringHandle))
 (defn resourceloader/has-cached [path : cstr] : bool
   (godot-call-b (godot-singleton "ResourceLoader") "has_cached" path))
 (defn resourceloader/exists [path : cstr type-hint : cstr] : bool
@@ -3770,8 +3770,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "push_outline_size" outline-size))
 (defn richtextlabel/push-outline-color [self : RichTextLabelHandle color : ColorHandle]
   (godot-call-v (:: self :int) "push_outline_color" (:: color :int)))
-(defn richtextlabel/push-paragraph [self : RichTextLabelHandle alignment : int base-direction : int language : cstr st-parser : int justification-flags : int tab-stops : int]
-  (godot-call-v (:: self :int) "push_paragraph" alignment base-direction language st-parser justification-flags tab-stops))
+(defn richtextlabel/push-paragraph [self : RichTextLabelHandle alignment : int base-direction : int language : cstr st-parser : int justification-flags : int tab-stops : PackedFloat32Handle]
+  (godot-call-v (:: self :int) "push_paragraph" alignment base-direction language st-parser justification-flags (:: tab-stops :int)))
 (defn richtextlabel/push-indent [self : RichTextLabelHandle level : int]
   (godot-call-v (:: self :int) "push_indent" level))
 (defn richtextlabel/push-list [self : RichTextLabelHandle level : int type : int capitalize : bool bullet : cstr]
@@ -3954,8 +3954,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-f (:: self :int) "get_line_offset" line))
 (defn richtextlabel/get-paragraph-offset [self : RichTextLabelHandle paragraph : int] : float
   (godot-call-f (:: self :int) "get_paragraph_offset" paragraph))
-(defn richtextlabel/parse-expressions-for-values [self : RichTextLabelHandle expressions : int] : DictHandle
-  (:: (godot-call (:: self :int) "parse_expressions_for_values" expressions) :DictHandle))
+(defn richtextlabel/parse-expressions-for-values [self : RichTextLabelHandle expressions : PackedStringHandle] : DictHandle
+  (:: (godot-call (:: self :int) "parse_expressions_for_values" (:: expressions :int)) :DictHandle))
 (defn richtextlabel/set-effects [self : RichTextLabelHandle effects : ArrayHandle]
   (godot-call-v (:: self :int) "set_effects" (:: effects :int)))
 (defn richtextlabel/get-effects [self : RichTextLabelHandle] : ArrayHandle
@@ -4094,9 +4094,9 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_freeze_mode"))
 (defn rigidbody2d/get-colliding-bodies [self : RigidBody2DHandle] : int
   (godot-call (:: self :int) "get_colliding_bodies"))
-(defn rigidbody2d/on-body-shape-entered [self : RigidBody2DHandle handler : (fn [int NodeHandle int int] void)] : void
+(defn rigidbody2d/on-body-shape-entered [self : RigidBody2DHandle handler : (fn [RidHandle NodeHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_entered" handler))
-(defn rigidbody2d/on-body-shape-exited [self : RigidBody2DHandle handler : (fn [int NodeHandle int int] void)] : void
+(defn rigidbody2d/on-body-shape-exited [self : RigidBody2DHandle handler : (fn [RidHandle NodeHandle int int] void)] : void
   (godot-connect-typed (:: self :int) "body_shape_exited" handler))
 (defn rigidbody2d/on-body-entered [self : RigidBody2DHandle handler : (fn [NodeHandle] void)] : void
   (godot-connect-typed (:: self :int) "body_entered" handler))
@@ -4236,8 +4236,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_bone_count"))
 (defn skeleton2d/get-bone [self : Skeleton2DHandle idx : int] : int
   (godot-call (:: self :int) "get_bone" idx))
-(defn skeleton2d/get-skeleton [self : Skeleton2DHandle] : int
-  (godot-call (:: self :int) "get_skeleton"))
+(defn skeleton2d/get-skeleton [self : Skeleton2DHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_skeleton") :RidHandle))
 (defn skeleton2d/set-modification-stack [self : Skeleton2DHandle modification-stack : int]
   (godot-call-v (:: self :int) "set_modification_stack" modification-stack))
 (defn skeleton2d/get-modification-stack [self : Skeleton2DHandle] : int
@@ -4332,22 +4332,22 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "get_size") :Vec2Handle))
 (defn texture2d/has-alpha [self : Texture2DHandle] : bool
   (godot-call-b (:: self :int) "has_alpha"))
-(defn texture2d/draw [self : Texture2DHandle canvas-item : int position : Vec2Handle modulate : ColorHandle transpose : bool]
-  (godot-call-v (:: self :int) "draw" canvas-item (:: position :int) (:: modulate :int) transpose))
-(defn texture2d/draw-rect [self : Texture2DHandle canvas-item : int rect : Rect2Handle tile : bool modulate : ColorHandle transpose : bool]
-  (godot-call-v (:: self :int) "draw_rect" canvas-item (:: rect :int) tile (:: modulate :int) transpose))
-(defn texture2d/draw-rect-region [self : Texture2DHandle canvas-item : int rect : Rect2Handle src-rect : Rect2Handle modulate : ColorHandle transpose : bool clip-uv : bool]
-  (godot-call-v (:: self :int) "draw_rect_region" canvas-item (:: rect :int) (:: src-rect :int) (:: modulate :int) transpose clip-uv))
+(defn texture2d/draw [self : Texture2DHandle canvas-item : RidHandle position : Vec2Handle modulate : ColorHandle transpose : bool]
+  (godot-call-v (:: self :int) "draw" (:: canvas-item :int) (:: position :int) (:: modulate :int) transpose))
+(defn texture2d/draw-rect [self : Texture2DHandle canvas-item : RidHandle rect : Rect2Handle tile : bool modulate : ColorHandle transpose : bool]
+  (godot-call-v (:: self :int) "draw_rect" (:: canvas-item :int) (:: rect :int) tile (:: modulate :int) transpose))
+(defn texture2d/draw-rect-region [self : Texture2DHandle canvas-item : RidHandle rect : Rect2Handle src-rect : Rect2Handle modulate : ColorHandle transpose : bool clip-uv : bool]
+  (godot-call-v (:: self :int) "draw_rect_region" (:: canvas-item :int) (:: rect :int) (:: src-rect :int) (:: modulate :int) transpose clip-uv))
 (defn texture2d/get-image [self : Texture2DHandle] : ImageHandle
   (:: (godot-call (:: self :int) "get_image") :ImageHandle))
 (defn texture2d/create-placeholder [self : Texture2DHandle] : ResourceHandle
   (:: (godot-call (:: self :int) "create_placeholder") :ResourceHandle))
 
 ;; ---- TileMap (58 methods, 1 signals) ----
-(defn tilemap/set-navigation-map [self : TileMapHandle layer : int map : int]
-  (godot-call-v (:: self :int) "set_navigation_map" layer map))
-(defn tilemap/get-navigation-map [self : TileMapHandle layer : int] : int
-  (godot-call (:: self :int) "get_navigation_map" layer))
+(defn tilemap/set-navigation-map [self : TileMapHandle layer : int map : RidHandle]
+  (godot-call-v (:: self :int) "set_navigation_map" layer (:: map :int)))
+(defn tilemap/get-navigation-map [self : TileMapHandle layer : int] : RidHandle
+  (:: (godot-call (:: self :int) "get_navigation_map" layer) :RidHandle))
 (defn tilemap/force-update [self : TileMapHandle layer : int]
   (godot-call-v (:: self :int) "force_update" layer))
 (defn tilemap/set-tileset [self : TileMapHandle tileset : int]
@@ -4394,10 +4394,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_layer_navigation_enabled" layer enabled))
 (defn tilemap/is-layer-navigation-enabled [self : TileMapHandle layer : int] : bool
   (godot-call-b (:: self :int) "is_layer_navigation_enabled" layer))
-(defn tilemap/set-layer-navigation-map [self : TileMapHandle layer : int map : int]
-  (godot-call-v (:: self :int) "set_layer_navigation_map" layer map))
-(defn tilemap/get-layer-navigation-map [self : TileMapHandle layer : int] : int
-  (godot-call (:: self :int) "get_layer_navigation_map" layer))
+(defn tilemap/set-layer-navigation-map [self : TileMapHandle layer : int map : RidHandle]
+  (godot-call-v (:: self :int) "set_layer_navigation_map" layer (:: map :int)))
+(defn tilemap/get-layer-navigation-map [self : TileMapHandle layer : int] : RidHandle
+  (:: (godot-call (:: self :int) "get_layer_navigation_map" layer) :RidHandle))
 (defn tilemap/set-collision-animatable [self : TileMapHandle enabled : bool]
   (godot-call-v (:: self :int) "set_collision_animatable" enabled))
 (defn tilemap/is-collision-animatable [self : TileMapHandle] : bool
@@ -4422,10 +4422,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call (:: self :int) "get_cell_alternative_tile" layer coords use-proxies))
 (defn tilemap/get-cell-tile-data [self : TileMapHandle layer : int coords : int use-proxies : bool] : int
   (godot-call (:: self :int) "get_cell_tile_data" layer coords use-proxies))
-(defn tilemap/get-coords-for-body-rid [self : TileMapHandle body : int] : int
-  (godot-call (:: self :int) "get_coords_for_body_rid" body))
-(defn tilemap/get-layer-for-body-rid [self : TileMapHandle body : int] : int
-  (godot-call (:: self :int) "get_layer_for_body_rid" body))
+(defn tilemap/get-coords-for-body-rid [self : TileMapHandle body : RidHandle] : int
+  (godot-call (:: self :int) "get_coords_for_body_rid" (:: body :int)))
+(defn tilemap/get-layer-for-body-rid [self : TileMapHandle body : RidHandle] : int
+  (godot-call (:: self :int) "get_layer_for_body_rid" (:: body :int)))
 (defn tilemap/get-pattern [self : TileMapHandle layer : int coords-array : int] : int
   (godot-call (:: self :int) "get_pattern" layer coords-array))
 (defn tilemap/map-pattern [self : TileMapHandle position-in-tilemap : int coords-in-pattern : int pattern : int] : int
@@ -4494,10 +4494,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_cells_terrain_connect" cells terrain-set terrain ignore-empty-terrains))
 (defn tilemaplayer/set-cells-terrain-path [self : TileMapLayerHandle path : int terrain-set : int terrain : int ignore-empty-terrains : bool]
   (godot-call-v (:: self :int) "set_cells_terrain_path" path terrain-set terrain ignore-empty-terrains))
-(defn tilemaplayer/has-body-rid [self : TileMapLayerHandle body : int] : bool
-  (godot-call-b (:: self :int) "has_body_rid" body))
-(defn tilemaplayer/get-coords-for-body-rid [self : TileMapLayerHandle body : int] : int
-  (godot-call (:: self :int) "get_coords_for_body_rid" body))
+(defn tilemaplayer/has-body-rid [self : TileMapLayerHandle body : RidHandle] : bool
+  (godot-call-b (:: self :int) "has_body_rid" (:: body :int)))
+(defn tilemaplayer/get-coords-for-body-rid [self : TileMapLayerHandle body : RidHandle] : int
+  (godot-call (:: self :int) "get_coords_for_body_rid" (:: body :int)))
 (defn tilemaplayer/update-internals [self : TileMapLayerHandle]
   (godot-call-v (:: self :int) "update_internals"))
 (defn tilemaplayer/notify-runtime-tile-data-update [self : TileMapLayerHandle]
@@ -4512,10 +4512,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (:: (godot-call (:: self :int) "map_to_local" map-position) :Vec2Handle))
 (defn tilemaplayer/local-to-map [self : TileMapLayerHandle local-position : Vec2Handle] : int
   (godot-call (:: self :int) "local_to_map" (:: local-position :int)))
-(defn tilemaplayer/set-tile-map-data-from-array [self : TileMapLayerHandle tile-map-layer-data : int]
-  (godot-call-v (:: self :int) "set_tile_map_data_from_array" tile-map-layer-data))
-(defn tilemaplayer/get-tile-map-data-as-array [self : TileMapLayerHandle] : int
-  (godot-call (:: self :int) "get_tile_map_data_as_array"))
+(defn tilemaplayer/set-tile-map-data-from-array [self : TileMapLayerHandle tile-map-layer-data : PackedByteHandle]
+  (godot-call-v (:: self :int) "set_tile_map_data_from_array" (:: tile-map-layer-data :int)))
+(defn tilemaplayer/get-tile-map-data-as-array [self : TileMapLayerHandle] : PackedByteHandle
+  (:: (godot-call (:: self :int) "get_tile_map_data_as_array") :PackedByteHandle))
 (defn tilemaplayer/set-enabled [self : TileMapLayerHandle enabled : bool]
   (godot-call-v (:: self :int) "set_enabled" enabled))
 (defn tilemaplayer/is-enabled [self : TileMapLayerHandle] : bool
@@ -4552,10 +4552,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_navigation_enabled" enabled))
 (defn tilemaplayer/is-navigation-enabled [self : TileMapLayerHandle] : bool
   (godot-call-b (:: self :int) "is_navigation_enabled"))
-(defn tilemaplayer/set-navigation-map [self : TileMapLayerHandle map : int]
-  (godot-call-v (:: self :int) "set_navigation_map" map))
-(defn tilemaplayer/get-navigation-map [self : TileMapLayerHandle] : int
-  (godot-call (:: self :int) "get_navigation_map"))
+(defn tilemaplayer/set-navigation-map [self : TileMapLayerHandle map : RidHandle]
+  (godot-call-v (:: self :int) "set_navigation_map" (:: map :int)))
+(defn tilemaplayer/get-navigation-map [self : TileMapLayerHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_navigation_map") :RidHandle))
 (defn tilemaplayer/set-navigation-visibility-mode [self : TileMapLayerHandle show-navigation : int]
   (godot-call-v (:: self :int) "set_navigation_visibility_mode" show-navigation))
 (defn tilemaplayer/get-navigation-visibility-mode [self : TileMapLayerHandle] : int
@@ -4724,8 +4724,8 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_physics_object_picking_first_only" enable))
 (defn viewport/get-physics-object-picking-first-only [self : ViewportHandle] : bool
   (godot-call-b (:: self :int) "get_physics_object_picking_first_only"))
-(defn viewport/get-viewport-rid [self : ViewportHandle] : int
-  (godot-call (:: self :int) "get_viewport_rid"))
+(defn viewport/get-viewport-rid [self : ViewportHandle] : RidHandle
+  (:: (godot-call (:: self :int) "get_viewport_rid") :RidHandle))
 (defn viewport/push-text-input [self : ViewportHandle text : cstr]
   (godot-call-v (:: self :int) "push_text_input" text))
 (defn viewport/push-input [self : ViewportHandle event : InputEventHandle in-local-coords : bool]
@@ -5000,10 +5000,10 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "set_use_font_oversampling" enable))
 (defn window/is-using-font-oversampling [self : WindowHandle] : bool
   (godot-call-b (:: self :int) "is_using_font_oversampling"))
-(defn window/set-mouse-passthrough-polygon [self : WindowHandle polygon : int]
-  (godot-call-v (:: self :int) "set_mouse_passthrough_polygon" polygon))
-(defn window/get-mouse-passthrough-polygon [self : WindowHandle] : int
-  (godot-call (:: self :int) "get_mouse_passthrough_polygon"))
+(defn window/set-mouse-passthrough-polygon [self : WindowHandle polygon : PackedVec2Handle]
+  (godot-call-v (:: self :int) "set_mouse_passthrough_polygon" (:: polygon :int)))
+(defn window/get-mouse-passthrough-polygon [self : WindowHandle] : PackedVec2Handle
+  (:: (godot-call (:: self :int) "get_mouse_passthrough_polygon") :PackedVec2Handle))
 (defn window/set-wrap-controls [self : WindowHandle enable : bool]
   (godot-call-v (:: self :int) "set_wrap_controls" enable))
 (defn window/is-wrapping-controls [self : WindowHandle] : bool
@@ -5120,7 +5120,7 @@ const char *TG_GENERATED_FACADE_SOURCE = R"TG_GEN(
   (godot-call-v (:: self :int) "popup_exclusive_centered_clamped" (:: from-node :int) minsize fallback-ratio))
 (defn window/on-window-input [self : WindowHandle handler : (fn [InputEventHandle] void)] : void
   (godot-connect-typed (:: self :int) "window_input" handler))
-(defn window/on-files-dropped [self : WindowHandle handler : (fn [int] void)] : void
+(defn window/on-files-dropped [self : WindowHandle handler : (fn [PackedStringHandle] void)] : void
   (godot-connect-typed (:: self :int) "files_dropped" handler))
 (defn window/on-mouse-entered [self : WindowHandle handler : (fn [] void)] : void
   (godot-connect-typed (:: self :int) "mouse_entered" handler))

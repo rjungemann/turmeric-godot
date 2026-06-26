@@ -136,6 +136,57 @@ TuriValue tg_native_godot_dict_get_f(TuriEnv *env, TuriValue *args, uint32_t n, 
 TuriValue tg_native_godot_dict_get_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_dict_get_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// --- T3.D: PackedXxxArray + RID natives ----------------------------------
+//
+// Builders return arena handles (per-element-type defopaque on the prelude
+// side); the polymorphic (godot-packed-size H) consults the underlying
+// Variant tag and dispatches to the right .size(). Element get/push are
+// per-type so the typed-native registration carries an honest return type
+// the elaborator can check.
+TuriValue tg_native_godot_packed_size            (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_byte_new        (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_byte_get        (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_byte_push       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_int32_new       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_int32_get       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_int32_push      (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_int64_new       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_int64_get       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_int64_push      (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_float32_new     (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_float32_get     (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_float32_push    (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_float64_new     (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_float64_get     (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_float64_push    (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_string_new      (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_string_get      (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_string_push     (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_vec2_new        (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_vec2_get        (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_vec2_push       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_vec3_new        (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_vec3_get        (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_vec3_push       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+TuriValue tg_native_godot_packed_color_new       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_color_get       (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_packed_color_push      (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+// RID is engine-owned: there's no Turmeric-side builder, only inspection.
+//   (godot-rid-id   H) -> :int   numeric resource id (0 for invalid)
+//   (godot-rid-valid? H) -> :bool
+TuriValue tg_native_godot_rid_id    (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_rid_valid (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 } // namespace godot
 
 #endif

@@ -1,0 +1,50 @@
+;; T3.D smoke -- exercises PackedByteArray, PackedInt32Array,
+;; PackedVector2Array, and RID round-trips through the variant arena.
+;; Attach to a Node.
+
+(defn _ready []
+  ;; --- PackedByteArray hand build + read ----------------------------------
+  (let [b (packed-byte-new)]
+    (packed-byte-push b 0xDE)
+    (packed-byte-push b 0xAD)
+    (packed-byte-push b 0xBE)
+    (packed-byte-push b 0xEF)
+    (godot-println "[t3d] bytes size:")
+    (godot-println (godot-num->str (packed-byte-size b)))
+    (godot-println "[t3d] bytes[0]:")
+    (godot-println (godot-num->str (packed-byte-get b 0)))
+    (godot-println "[t3d] bytes[3]:")
+    (godot-println (godot-num->str (packed-byte-get b 3))))
+
+  ;; --- PackedInt32Array (tilemap cells use case) --------------------------
+  (let [cells (packed-int32-new)]
+    (packed-int32-push cells 10)
+    (packed-int32-push cells 20)
+    (packed-int32-push cells 30)
+    (godot-println "[t3d] cells size:")
+    (godot-println (godot-num->str (packed-int32-size cells)))
+    (godot-println "[t3d] cells[1]:")
+    (godot-println (godot-num->str (packed-int32-get cells 1))))
+
+  ;; --- PackedVector2Array (vertex buffer use case) ------------------------
+  (let [verts (packed-vec2-new)]
+    (packed-vec2-push verts (godot-vec2 0.0 0.0))
+    (packed-vec2-push verts (godot-vec2 1.0 0.5))
+    (packed-vec2-push verts (godot-vec2 0.5 1.0))
+    (godot-println "[t3d] verts size:")
+    (godot-println (godot-num->str (packed-vec2-size verts)))
+    (let [v1 (packed-vec2-get verts 1)]
+      (godot-println "[t3d] verts[1].x:")
+      (godot-println (godot-num->str (godot-vec2-x v1)))
+      (godot-println "[t3d] verts[1].y:")
+      (godot-println (godot-num->str (godot-vec2-y v1)))))
+
+  ;; --- RID inspection -- the engine owns these; we just read the id.
+  ;; PhysicsServer2D.body_create returns an RID. We surface a fresh body
+  ;; so the rid-valid?/rid-id read path has a real value to compare.
+  (let [rid (godot-call (godot-singleton "PhysicsServer2D") "body_create")]
+    (godot-println "[t3d] rid valid?:")
+    (godot-println (if (godot-rid-valid? rid) "yes" "no"))
+    (godot-println "[t3d] rid id:")
+    (godot-println (godot-num->str (godot-rid-id rid)))
+    (godot-call (godot-singleton "PhysicsServer2D") "free_rid" rid)))

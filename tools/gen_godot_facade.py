@@ -157,6 +157,19 @@ ARENA_TYPES = {
     "Transform3D": "Transform3DHandle",
     "Array":       "ArrayHandle",
     "Dictionary":  "DictHandle",
+    # T3.D -- PackedXxxArray + RID land in the same arena. Each gets a
+    # distinct prelude defopaque so a (defn ... [a : PackedByteHandle b :
+    # PackedInt32Handle] ...) wrapper rejects mixing the two by type.
+    "PackedByteArray":    "PackedByteHandle",
+    "PackedInt32Array":   "PackedInt32Handle",
+    "PackedInt64Array":   "PackedInt64Handle",
+    "PackedFloat32Array": "PackedFloat32Handle",
+    "PackedFloat64Array": "PackedFloat64Handle",
+    "PackedStringArray":  "PackedStringHandle",
+    "PackedVector2Array": "PackedVec2Handle",
+    "PackedVector3Array": "PackedVec3Handle",
+    "PackedColorArray":   "PackedColorHandle",
+    "RID":                "RidHandle",
 }
 
 
@@ -302,6 +315,11 @@ PRELUDE_HANDLE_NAMES = {
     # T2.A -- arena handles G6 deferred; declared in prelude.cpp now so
     # the generator's per-class defopaque pass must not redeclare them.
     "Transform2DHandle", "Transform3DHandle", "ArrayHandle", "DictHandle",
+    # T3.D -- PackedXxxArray + RID arena handles, declared in prelude.cpp.
+    "PackedByteHandle", "PackedInt32Handle", "PackedInt64Handle",
+    "PackedFloat32Handle", "PackedFloat64Handle", "PackedStringHandle",
+    "PackedVec2Handle", "PackedVec3Handle", "PackedColorHandle",
+    "RidHandle",
 }
 
 

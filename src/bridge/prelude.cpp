@@ -39,6 +39,20 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 (defopaque Transform3DHandle :int)
 (defopaque ArrayHandle       :int)
 (defopaque DictHandle        :int)
+;; T3.D -- PackedXxxArray + RID share the same arena. Distinct defopaques
+;; so a (defn ... [b : PackedByteHandle i : PackedInt32Handle] ...) rejects
+;; cross-assignment at elaboration time; the natives still consume them via
+;; (:: h :int).
+(defopaque PackedByteHandle    :int)
+(defopaque PackedInt32Handle   :int)
+(defopaque PackedInt64Handle   :int)
+(defopaque PackedFloat32Handle :int)
+(defopaque PackedFloat64Handle :int)
+(defopaque PackedStringHandle  :int)
+(defopaque PackedVec2Handle    :int)
+(defopaque PackedVec3Handle    :int)
+(defopaque PackedColorHandle   :int)
+(defopaque RidHandle           :int)
 
 (defn nh->int [h : NodeHandle] : int (:: h :int))
 (defn int->nh [i : int] : NodeHandle (:: i :NodeHandle))
@@ -173,6 +187,54 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
   (godot-dict-get-b (:: d :int) k))
 (defn dict-get-c [d : DictHandle k : cstr] : cstr
   (godot-dict-get-c (:: d :int) k))
+
+;; --- T3.D: PackedXxxArray + RID typed wrappers ----------------------------
+;; Each Packed family has -new / -push / -get; -size is polymorphic across
+;; all nine. The element-type defopaques (Vec2Handle, Vec3Handle, ColorHandle)
+;; thread through for the aggregate-element variants.
+
+(defn packed-byte-new    [] : PackedByteHandle    (:: (godot-packed-byte-new)    :PackedByteHandle))
+(defn packed-int32-new   [] : PackedInt32Handle   (:: (godot-packed-int32-new)   :PackedInt32Handle))
+(defn packed-int64-new   [] : PackedInt64Handle   (:: (godot-packed-int64-new)   :PackedInt64Handle))
+(defn packed-float32-new [] : PackedFloat32Handle (:: (godot-packed-float32-new) :PackedFloat32Handle))
+(defn packed-float64-new [] : PackedFloat64Handle (:: (godot-packed-float64-new) :PackedFloat64Handle))
+(defn packed-string-new  [] : PackedStringHandle  (:: (godot-packed-string-new)  :PackedStringHandle))
+(defn packed-vec2-new    [] : PackedVec2Handle    (:: (godot-packed-vec2-new)    :PackedVec2Handle))
+(defn packed-vec3-new    [] : PackedVec3Handle    (:: (godot-packed-vec3-new)    :PackedVec3Handle))
+(defn packed-color-new   [] : PackedColorHandle   (:: (godot-packed-color-new)   :PackedColorHandle))
+
+(defn packed-byte-size    [h : PackedByteHandle]    : int (godot-packed-size (:: h :int)))
+(defn packed-int32-size   [h : PackedInt32Handle]   : int (godot-packed-size (:: h :int)))
+(defn packed-int64-size   [h : PackedInt64Handle]   : int (godot-packed-size (:: h :int)))
+(defn packed-float32-size [h : PackedFloat32Handle] : int (godot-packed-size (:: h :int)))
+(defn packed-float64-size [h : PackedFloat64Handle] : int (godot-packed-size (:: h :int)))
+(defn packed-string-size  [h : PackedStringHandle]  : int (godot-packed-size (:: h :int)))
+(defn packed-vec2-size    [h : PackedVec2Handle]    : int (godot-packed-size (:: h :int)))
+(defn packed-vec3-size    [h : PackedVec3Handle]    : int (godot-packed-size (:: h :int)))
+(defn packed-color-size   [h : PackedColorHandle]   : int (godot-packed-size (:: h :int)))
+
+(defn packed-byte-push    [h : PackedByteHandle    v : int]   (godot-packed-byte-push    (:: h :int) v))
+(defn packed-int32-push   [h : PackedInt32Handle   v : int]   (godot-packed-int32-push   (:: h :int) v))
+(defn packed-int64-push   [h : PackedInt64Handle   v : int]   (godot-packed-int64-push   (:: h :int) v))
+(defn packed-float32-push [h : PackedFloat32Handle v : float] (godot-packed-float32-push (:: h :int) v))
+(defn packed-float64-push [h : PackedFloat64Handle v : float] (godot-packed-float64-push (:: h :int) v))
+(defn packed-string-push  [h : PackedStringHandle  v : cstr]  (godot-packed-string-push  (:: h :int) v))
+(defn packed-vec2-push    [h : PackedVec2Handle    v : Vec2Handle]  (godot-packed-vec2-push  (:: h :int) (:: v :int)))
+(defn packed-vec3-push    [h : PackedVec3Handle    v : Vec3Handle]  (godot-packed-vec3-push  (:: h :int) (:: v :int)))
+(defn packed-color-push   [h : PackedColorHandle   v : ColorHandle] (godot-packed-color-push (:: h :int) (:: v :int)))
+
+(defn packed-byte-get    [h : PackedByteHandle    i : int] : int   (godot-packed-byte-get    (:: h :int) i))
+(defn packed-int32-get   [h : PackedInt32Handle   i : int] : int   (godot-packed-int32-get   (:: h :int) i))
+(defn packed-int64-get   [h : PackedInt64Handle   i : int] : int   (godot-packed-int64-get   (:: h :int) i))
+(defn packed-float32-get [h : PackedFloat32Handle i : int] : float (godot-packed-float32-get (:: h :int) i))
+(defn packed-float64-get [h : PackedFloat64Handle i : int] : float (godot-packed-float64-get (:: h :int) i))
+(defn packed-string-get  [h : PackedStringHandle  i : int] : cstr  (godot-packed-string-get  (:: h :int) i))
+(defn packed-vec2-get    [h : PackedVec2Handle    i : int] : Vec2Handle  (:: (godot-packed-vec2-get  (:: h :int) i) :Vec2Handle))
+(defn packed-vec3-get    [h : PackedVec3Handle    i : int] : Vec3Handle  (:: (godot-packed-vec3-get  (:: h :int) i) :Vec3Handle))
+(defn packed-color-get   [h : PackedColorHandle   i : int] : ColorHandle (:: (godot-packed-color-get (:: h :int) i) :ColorHandle))
+
+(defn rid-id      [r : RidHandle] : int  (godot-rid-id     (:: r :int)))
+(defn rid-valid?  [r : RidHandle] : bool (godot-rid-valid? (:: r :int)))
 
 ;; --- T2.C: runtime-checked downcast --------------------------------------
 ;; is-class? consults Object::is_class via the typed godot-call-b path.
