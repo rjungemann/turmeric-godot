@@ -376,6 +376,35 @@ static GDExtensionBool cb_get(GDExtensionScriptInstanceDataPtr p_instance,
     return 1;
 }
 
+// T4.B starter -- hot reload preserves inspector-edited @export values.
+//
+// Godot drives the capture/replay dance when Script::_reload(p_keep_state=true)
+// fires: BEFORE tearing down the instance, it walks our snapshot via
+// cb_get_property_state; AFTER reload it re-creates the instance and replays
+// each captured pair via cb_set. The replay path already coerces to the
+// declared type (see cb_set above), so a reload that changes an export's
+// type drops the stale value cleanly rather than reinterpreting bytes.
+//
+// Without this hook the snapshot is empty -> Godot has nothing to replay
+// -> values reset to defaults. That's the friction the plan calls out.
+static void cb_get_property_state(GDExtensionScriptInstanceDataPtr p_instance,
+                                  GDExtensionScriptInstancePropertyStateAdd p_add_func,
+                                  void *p_userdata) {
+    TurmericInstance *self = (TurmericInstance *)p_instance;
+    if (!self || !self->script || !p_add_func) return;
+    // Only stream values for exports the *current* script declares. If a
+    // reload removes an export, capturing its stale value would just be
+    // overwritten by a no-op (cb_set rejects unknown names) -- but skipping
+    // up front saves the round trip and keeps the log noise down.
+    for (const ExportDecl &decl : self->script->get_exports()) {
+        CharString name_utf8 = String(decl.name).utf8();
+        std::string key(name_utf8.get_data(), name_utf8.length());
+        auto it = self->property_values.find(key);
+        if (it == self->property_values.end()) continue;
+        p_add_func(decl.name._native_ptr(), it->second._native_ptr(), p_userdata);
+    }
+}
+
 static GDExtensionVariantType cb_get_property_type(
         GDExtensionScriptInstanceDataPtr p_instance,
         GDExtensionConstStringNamePtr p_name,
@@ -411,7 +440,7 @@ static const GDExtensionScriptInstanceInfo3 g_instance_info = {
     /* property_can_revert_func     */ nullptr,
     /* property_get_revert_func     */ nullptr,
     /* get_owner_func               */ cb_get_owner,
-    /* get_property_state_func      */ nullptr,
+    /* get_property_state_func      */ cb_get_property_state,
     /* get_method_list_func         */ cb_get_method_list,
     /* free_method_list_func        */ cb_free_method_list,
     /* get_property_type_func       */ cb_get_property_type,

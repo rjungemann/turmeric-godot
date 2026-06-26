@@ -106,9 +106,15 @@ void TurmericScript::_set_source_code(const String &p_code) {
 }
 
 Error TurmericScript::_reload(bool p_keep_state) {
-    (void)p_keep_state;
-    std::fprintf(stdout, "[turmeric-godot] TurmericScript::_reload (len=%lld)\n",
-                 (long long)source_code.length());
+    // T4.B starter -- the editor sets p_keep_state=true when it wants
+    // inspector-edited @export values to survive the reload. The actual
+    // capture/replay dance is driven by Godot via cb_get_property_state
+    // + cb_set (see turmeric_instance.cpp); the script side just notes
+    // the mode so the log makes the path obvious.
+    std::fprintf(stdout,
+                 "[turmeric-godot] TurmericScript::_reload (len=%lld, keep_state=%s)\n",
+                 (long long)source_code.length(),
+                 p_keep_state ? "yes" : "no");
     std::fflush(stdout);
 
     if (!turi_env) {
