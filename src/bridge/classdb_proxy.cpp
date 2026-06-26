@@ -625,4 +625,178 @@ TuriValue tg_native_godot_dict_get(TuriEnv *env, TuriValue *args, uint32_t n, vo
     return tg_result_to_turi(d[key]);
 }
 
+// --- T3.C: builders + mutators + typed accessors ---------------------------
+//
+// The arena already round-trips Dictionary/Array on godot-call return paths
+// (tg_result_to_turi -> variant_arena_push) and on godot-call arg paths
+// (tg_arg_to_variant -> arena lookup), so this section is only about giving
+// Turmeric callers a way to *construct* and *read fields out of* the handle.
+
+TuriValue tg_native_godot_array_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)ud;
+    if (n != 0) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-array-new) takes no args");
+        return turi_nil();
+    }
+    return turi_int(variant_arena_push(Variant(Array())));
+}
+
+TuriValue tg_native_godot_array_push(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 2) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-array-push h v) takes (handle, value)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_handle_arg(args[0], "(godot-array-push)");
+    if (!vp || vp->get_type() != Variant::ARRAY) return turi_nil();
+    // Godot Array is refcounted; mutating through a copied handle mutates
+    // the shared backing store (same as Dictionary below).
+    Array a = (Array)*vp;
+    a.push_back(tg_arg_to_variant(args[1], "godot-array-push", 1));
+    return turi_nil();
+}
+
+// Shared body for the typed array reads. Returns nullptr (and emits a
+// printerr) on shape/bounds failure; otherwise *out gets the underlying
+// element Variant.
+static bool tg_array_elem(TuriValue *args, uint32_t n, const char *who, Variant *out) {
+    if (n != 2 || args[1].tag != TURI_INT) {
+        UtilityFunctions::printerr(String("turmeric-godot: ") + String(who) +
+                                   String(" takes (handle, :int)"));
+        return false;
+    }
+    const Variant *vp = tg_handle_arg(args[0], who);
+    if (!vp || vp->get_type() != Variant::ARRAY) return false;
+    Array a = (Array)*vp;
+    const int64_t i = args[1].as_int;
+    if (i < 0 || i >= (int64_t)a.size()) {
+        UtilityFunctions::printerr(String("turmeric-godot: ") + String(who) +
+                                   String(" index ") + String::num_int64(i) +
+                                   String(" out of range [0, ") +
+                                   String::num_int64((int64_t)a.size()) + String(")"));
+        return false;
+    }
+    *out = a[(int)i];
+    return true;
+}
+
+TuriValue tg_native_godot_array_get_i(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_array_elem(args, n, "(godot-array-get-i)", &v)) return turi_int(0);
+    if (v.get_type() == Variant::INT)   return turi_int((int64_t)v);
+    if (v.get_type() == Variant::FLOAT) return turi_int((int64_t)(double)v);
+    if (v.get_type() == Variant::BOOL)  return turi_int((bool)v ? 1 : 0);
+    return turi_int(0);
+}
+
+TuriValue tg_native_godot_array_get_f(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_array_elem(args, n, "(godot-array-get-f)", &v)) return turi_float(0.0);
+    if (v.get_type() == Variant::FLOAT) return turi_float((double)v);
+    if (v.get_type() == Variant::INT)   return turi_float((double)(int64_t)v);
+    return turi_float(0.0);
+}
+
+TuriValue tg_native_godot_array_get_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_array_elem(args, n, "(godot-array-get-b)", &v)) return turi_bool(false);
+    return turi_bool((bool)v);
+}
+
+TuriValue tg_native_godot_array_get_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_array_elem(args, n, "(godot-array-get-c)", &v))
+        return turi_cstr(string_arena_push("", 0));
+    const Variant::Type t = v.get_type();
+    if (t == Variant::STRING || t == Variant::STRING_NAME || t == Variant::NODE_PATH) {
+        String s = v;
+        CharString cs = s.utf8();
+        return turi_cstr(string_arena_push(cs.get_data(), (size_t)cs.length()));
+    }
+    return turi_cstr(string_arena_push("", 0));
+}
+
+TuriValue tg_native_godot_dict_new(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)args; (void)ud;
+    if (n != 0) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-dict-new) takes no args");
+        return turi_nil();
+    }
+    return turi_int(variant_arena_push(Variant(Dictionary())));
+}
+
+TuriValue tg_native_godot_dict_set(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    if (n != 3 || args[1].tag != TURI_CSTR || !args[1].as_cstr) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-dict-set d key v) takes (handle, :cstr, value)");
+        return turi_nil();
+    }
+    const Variant *vp = tg_handle_arg(args[0], "(godot-dict-set)");
+    if (!vp || vp->get_type() != Variant::DICTIONARY) return turi_nil();
+    Dictionary d = (Dictionary)*vp;
+    d[String(args[1].as_cstr)] = tg_arg_to_variant(args[2], "godot-dict-set", 2);
+    return turi_nil();
+}
+
+// Shared body for typed dict reads. Returns false when the key is missing
+// or the handle is the wrong shape.
+static bool tg_dict_elem(TuriValue *args, uint32_t n, const char *who, Variant *out) {
+    if (n != 2 || args[1].tag != TURI_CSTR || !args[1].as_cstr) {
+        UtilityFunctions::printerr(String("turmeric-godot: ") + String(who) +
+                                   String(" takes (handle, :cstr)"));
+        return false;
+    }
+    const Variant *vp = tg_handle_arg(args[0], who);
+    if (!vp || vp->get_type() != Variant::DICTIONARY) return false;
+    Dictionary d = (Dictionary)*vp;
+    String key(args[1].as_cstr);
+    if (!d.has(key)) return false;
+    *out = d[key];
+    return true;
+}
+
+TuriValue tg_native_godot_dict_get_i(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_dict_elem(args, n, "(godot-dict-get-i)", &v)) return turi_int(0);
+    if (v.get_type() == Variant::INT)   return turi_int((int64_t)v);
+    if (v.get_type() == Variant::FLOAT) return turi_int((int64_t)(double)v);
+    if (v.get_type() == Variant::BOOL)  return turi_int((bool)v ? 1 : 0);
+    return turi_int(0);
+}
+
+TuriValue tg_native_godot_dict_get_f(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_dict_elem(args, n, "(godot-dict-get-f)", &v)) return turi_float(0.0);
+    if (v.get_type() == Variant::FLOAT) return turi_float((double)v);
+    if (v.get_type() == Variant::INT)   return turi_float((double)(int64_t)v);
+    return turi_float(0.0);
+}
+
+TuriValue tg_native_godot_dict_get_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_dict_elem(args, n, "(godot-dict-get-b)", &v)) return turi_bool(false);
+    return turi_bool((bool)v);
+}
+
+TuriValue tg_native_godot_dict_get_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    Variant v;
+    if (!tg_dict_elem(args, n, "(godot-dict-get-c)", &v))
+        return turi_cstr(string_arena_push("", 0));
+    const Variant::Type t = v.get_type();
+    if (t == Variant::STRING || t == Variant::STRING_NAME || t == Variant::NODE_PATH) {
+        String s = v;
+        CharString cs = s.utf8();
+        return turi_cstr(string_arena_push(cs.get_data(), (size_t)cs.length()));
+    }
+    return turi_cstr(string_arena_push("", 0));
+}
+
 } // namespace godot

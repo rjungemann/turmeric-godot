@@ -100,10 +100,41 @@ TuriValue tg_native_godot_xform3d_origin(TuriEnv *env, TuriValue *args, uint32_t
 TuriValue tg_native_godot_array_len(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_array_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// T3.C -- Array builder / mutator + typed read variants.
+//   (godot-array-new)             -> ArrayHandle (empty Array)
+//   (godot-array-push h v)        -> :void  (appends primitive or arena handle)
+//   (godot-array-get-i h i)       -> :int
+//   (godot-array-get-f h i)       -> :float
+//   (godot-array-get-b h i)       -> :bool
+//   (godot-array-get-c h i)       -> :cstr  (string-arena lifetime)
+TuriValue tg_native_godot_array_new  (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_array_push (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_array_get_i(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_array_get_f(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_array_get_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_array_get_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 // (godot-dict-has h key) -> :bool  (key: :cstr)
 // (godot-dict-get h key) -> marshalled element (nil if missing)
 TuriValue tg_native_godot_dict_has(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_dict_get(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
+// T3.C -- Dictionary builder / mutator + typed read variants. Keys are
+// :cstr (the Variant dispatch coerces String <-> StringName as needed
+// on the Godot side; primitive non-string keys can be added if a real
+// API surface demands them).
+//   (godot-dict-new)              -> DictHandle (empty Dictionary)
+//   (godot-dict-set h key v)      -> :void
+//   (godot-dict-get-i h key)      -> :int  (0 when missing)
+//   (godot-dict-get-f h key)      -> :float
+//   (godot-dict-get-b h key)      -> :bool
+//   (godot-dict-get-c h key)      -> :cstr  (string-arena lifetime)
+TuriValue tg_native_godot_dict_new  (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_dict_set  (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_dict_get_i(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_dict_get_f(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_dict_get_b(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_dict_get_c(TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
 } // namespace godot
 

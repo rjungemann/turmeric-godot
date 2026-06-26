@@ -1,0 +1,39 @@
+;; T3.C smoke -- exercises (godot-dict-new / dict-set / dict-get) and
+;; (godot-array-new / array-push / array-get) round-trips, plus a typed
+;; Dictionary return from a real Godot API (Engine.get_version_info).
+;; Attach to a Node.
+
+(defn _ready []
+  ;; --- Hand-built Dictionary -----------------------------------------------
+  (let [d (dict-new)]
+    (dict-set-i d "frame"   42)
+    (dict-set-f d "scale"   1.25)
+    (dict-set-b d "active"  1)
+    (dict-set-c d "label"   "hello")
+    (godot-println "[t3c] dict frame:")
+    (godot-println (godot-num->str (dict-get-i d "frame")))
+    (godot-println "[t3c] dict scale:")
+    (godot-println (godot-num->str (dict-get-f d "scale")))
+    (godot-println "[t3c] dict active:")
+    (godot-println (if (dict-get-b d "active") "yes" "no"))
+    (godot-println "[t3c] dict label:")
+    (godot-println (dict-get-c d "label")))
+
+  ;; --- Hand-built Array ----------------------------------------------------
+  (let [a (array-new)]
+    (array-push-i a 10)
+    (array-push-i a 20)
+    (array-push-c a "thirty")
+    (godot-println "[t3c] array size:")
+    (godot-println (godot-num->str (array-size a)))
+    (godot-println "[t3c] array[0]:")
+    (godot-println (godot-num->str (array-get-i a 0)))
+    (godot-println "[t3c] array[2]:")
+    (godot-println (array-get-c a 2)))
+
+  ;; --- Engine.get_version_info returns a real Dictionary ------------------
+  (let [info (engine/get-version-info)]
+    (godot-println "[t3c] engine version major:")
+    (godot-println (godot-num->str (dict-get-i info "major")))
+    (godot-println "[t3c] engine version string:")
+    (godot-println (dict-get-c info "string"))))

@@ -672,6 +672,19 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native      ("godot-array-get",        tg_native_godot_array_get,        nullptr);  // dynamic
     turi_register_default_native_typed("godot-dict-has",         tg_native_godot_dict_has,         nullptr, TUR_NRT_BOOL);
     turi_register_default_native      ("godot-dict-get",         tg_native_godot_dict_get,         nullptr);  // dynamic
+    // T3.C -- Array/Dictionary construction, mutation, typed reads.
+    turi_register_default_native      ("godot-array-new",        tg_native_godot_array_new,        nullptr);  // ArrayHandle (arena)
+    turi_register_default_native_typed("godot-array-push",       tg_native_godot_array_push,       nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("godot-array-get-i",      tg_native_godot_array_get_i,      nullptr, TUR_NRT_INT);
+    turi_register_default_native_typed("godot-array-get-f",      tg_native_godot_array_get_f,      nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-array-get-b",      tg_native_godot_array_get_b,      nullptr, TUR_NRT_BOOL);
+    turi_register_default_native_typed("godot-array-get-c",      tg_native_godot_array_get_c,      nullptr, TUR_NRT_CSTR);
+    turi_register_default_native      ("godot-dict-new",         tg_native_godot_dict_new,         nullptr);  // DictHandle (arena)
+    turi_register_default_native_typed("godot-dict-set",         tg_native_godot_dict_set,         nullptr, TUR_NRT_VOID);
+    turi_register_default_native_typed("godot-dict-get-i",       tg_native_godot_dict_get_i,       nullptr, TUR_NRT_INT);
+    turi_register_default_native_typed("godot-dict-get-f",       tg_native_godot_dict_get_f,       nullptr, TUR_NRT_FLOAT);
+    turi_register_default_native_typed("godot-dict-get-b",       tg_native_godot_dict_get_b,       nullptr, TUR_NRT_BOOL);
+    turi_register_default_native_typed("godot-dict-get-c",       tg_native_godot_dict_get_c,       nullptr, TUR_NRT_CSTR);
 }
 
 void TurmericLanguage::shutdown_turi() {

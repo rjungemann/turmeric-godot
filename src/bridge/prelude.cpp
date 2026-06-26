@@ -133,6 +133,47 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;;     usual (if (dict-has? d k) ...) idiom works directly. ------------------
 (defn dict-has? [d : int key : cstr] : bool (godot-dict-has d key))
 
+;; --- T3.C: typed Array/Dictionary prelude wrappers -----------------------
+;; Thin defopaque-fluent shells over the godot-array-* / godot-dict-*
+;; natives. The natives themselves take/return raw :int arena handles;
+;; these wrappers carry the ArrayHandle / DictHandle defopaque the rest
+;; of the generated facade hands you back, so the typical call shape is
+;;   (let [d (engine/get-version-info)]            ; d : DictHandle
+;;     (godot-println (dict-get-c d "string")))
+;; instead of forcing a (:: ... :int) ascription at every read site.
+
+(defn array-new [] : ArrayHandle
+  (:: (godot-array-new) :ArrayHandle))
+(defn array-size [a : ArrayHandle] : int
+  (godot-array-len (:: a :int)))
+(defn array-push-i [a : ArrayHandle v : int]   (godot-array-push (:: a :int) v))
+(defn array-push-f [a : ArrayHandle v : float] (godot-array-push (:: a :int) v))
+(defn array-push-b [a : ArrayHandle v : bool]  (godot-array-push (:: a :int) v))
+(defn array-push-c [a : ArrayHandle v : cstr]  (godot-array-push (:: a :int) v))
+(defn array-get-i [a : ArrayHandle i : int] : int
+  (godot-array-get-i (:: a :int) i))
+(defn array-get-f [a : ArrayHandle i : int] : float
+  (godot-array-get-f (:: a :int) i))
+(defn array-get-b [a : ArrayHandle i : int] : bool
+  (godot-array-get-b (:: a :int) i))
+(defn array-get-c [a : ArrayHandle i : int] : cstr
+  (godot-array-get-c (:: a :int) i))
+
+(defn dict-new [] : DictHandle
+  (:: (godot-dict-new) :DictHandle))
+(defn dict-set-i [d : DictHandle k : cstr v : int]   (godot-dict-set (:: d :int) k v))
+(defn dict-set-f [d : DictHandle k : cstr v : float] (godot-dict-set (:: d :int) k v))
+(defn dict-set-b [d : DictHandle k : cstr v : bool]  (godot-dict-set (:: d :int) k v))
+(defn dict-set-c [d : DictHandle k : cstr v : cstr]  (godot-dict-set (:: d :int) k v))
+(defn dict-get-i [d : DictHandle k : cstr] : int
+  (godot-dict-get-i (:: d :int) k))
+(defn dict-get-f [d : DictHandle k : cstr] : float
+  (godot-dict-get-f (:: d :int) k))
+(defn dict-get-b [d : DictHandle k : cstr] : bool
+  (godot-dict-get-b (:: d :int) k))
+(defn dict-get-c [d : DictHandle k : cstr] : cstr
+  (godot-dict-get-c (:: d :int) k))
+
 ;; --- T2.C: runtime-checked downcast --------------------------------------
 ;; is-class? consults Object::is_class via the typed godot-call-b path.
 ;; Pairs with the generated try-as-<class> helpers (bridge/generated_facade)
