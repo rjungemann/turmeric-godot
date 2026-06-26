@@ -716,6 +716,9 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native_typed("godot-packed-color-push",    tg_native_godot_packed_color_push,    nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-rid-id",               tg_native_godot_rid_id,               nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-rid-valid?",           tg_native_godot_rid_valid,            nullptr, TUR_NRT_BOOL);
+    // T3.E -- generic variadic dispatch (callv with a trailing ArrayHandle).
+    turi_register_default_native      ("godot-call-pack",             tg_native_godot_call_pack,            nullptr);                  // dynamic
+    turi_register_default_native_typed("godot-call-pack-v",           tg_native_godot_call_pack_v,          nullptr, TUR_NRT_VOID);
 }
 
 void TurmericLanguage::shutdown_turi() {

@@ -211,6 +211,65 @@ def safe_arg_name(name: str) -> str:
     return RESERVED_REWRITES.get(n, n)
 
 
+def _gen_vararg_wrapper(class_name: str, method: dict,
+                        is_singleton_class: bool) -> str:
+    """T3.E -- emit a vararg dispatch wrapper.
+
+    Shape: the user-facing signature carries every fixed positional arg
+    plus a trailing `extras : ArrayHandle`. The body routes through
+    godot-call-pack(-v), which spreads `extras` after the fixed args
+    when building the call list for obj->callv(method, args).
+    """
+    mname = method["name"]
+    cls = class_prefix(class_name)
+    wrap = f"{cls}/{kebab(mname)}"
+
+    is_static_call = bool(method.get("is_static")) or is_singleton_class
+    if is_static_call:
+        param_list = []
+        self_expr = f'(godot-singleton "{class_name}")'
+    else:
+        self_type = f":{handle_name(class_name)}"
+        param_list = [f"self : {self_type.lstrip(':')}"]
+        self_expr = f"(:: self :int)"
+
+    # Fixed positional args: each carries its declared type, exactly like
+    # the non-vararg wrapper. The trailing `extras` is appended at the end.
+    call_args = []
+    for a in method.get("arguments", []):
+        n = safe_arg_name(a["name"])
+        t = param_type(a["type"])
+        param_list.append(f"{n} : {t.lstrip(':')}")
+        if t.lstrip(":") not in ("int", "float", "bool", "cstr"):
+            call_args.append(f"(:: {n} :int)")
+        else:
+            call_args.append(n)
+    param_list.append("extras : ArrayHandle")
+    call_args.append("(:: extras :int)")
+
+    # Pick the native variant from the return type. The marshaller spreads
+    # `extras` after the fixed args, so the call-pack body shape is:
+    #   (godot-call-pack OBJ "method" fixed... (:: extras :int))
+    if "return_value" not in method:
+        call_native = "godot-call-pack-v"
+        ret_anno    = ""
+        return_wrap = None
+    else:
+        rt = method["return_value"].get("type", "")
+        # Vararg methods that return concrete primitives are rare in the
+        # current allowlist (Object::call / Object::callv return Variant,
+        # i.e. dynamic); keep things honest with the dynamic :int default
+        # and let the caller marshal the result themselves.
+        call_native = "godot-call-pack"
+        ret_anno    = " : int"
+        return_wrap = None
+
+    params_src    = " ".join(param_list)
+    call_args_src = " ".join(call_args)
+    body = f'({call_native} {self_expr} "{mname}" {call_args_src})'
+    return f"(defn {wrap} [{params_src}]{ret_anno}\n  {body})"
+
+
 def gen_wrapper(class_name: str, method: dict,
                 is_singleton_class: bool = False) -> str | None:
     """Returns a Turmeric defn for `method`, or None if it's skipped.
@@ -227,7 +286,10 @@ def gen_wrapper(class_name: str, method: dict,
     if method.get("is_virtual"):
         return None
     if method.get("is_vararg"):
-        return None
+        # T3.E -- vararg dispatch path. Emits a wrapper whose trailing
+        # parameter is an :ArrayHandle ("extras"); the body routes through
+        # godot-call-pack(-v), which is callv over [fixed..., *extras].
+        return _gen_vararg_wrapper(class_name, method, is_singleton_class)
     is_static_call = bool(method.get("is_static")) or is_singleton_class
     # Avoid prelude collisions on Node and its subclasses (they all
     # inherit Node's methods; we generate per-class wrappers but the

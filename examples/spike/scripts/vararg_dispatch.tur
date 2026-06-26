@@ -1,0 +1,34 @@
+;; T3.E smoke -- exercises the generic vararg dispatch surface
+;; (godot-call-pack / godot-call-pack-v) generated for is_vararg methods
+;; on the allowlist. Attach to a Node.
+
+(defn _ready []
+  (let [self (godot-self)]
+    ;; object/emit-signal -- pre-T3.E this was reachable only through the
+    ;; curated (emit-signal ...) prelude native bound to the current
+    ;; instance. The generated wrapper now works on any Object handle.
+    ;; Empty extras here -- no signal args declared.
+    (let [extras (array-new)]
+      ;; "tree_entered" is a built-in Node signal with no args, useful as
+      ;; a no-op fixture target so the call shape is exercised without
+      ;; needing a hand-declared signal first.
+      (godot-println "[t3e] emit_signal tree_entered (no args)...")
+      (object/emit-signal (:: self :ObjectHandle) "tree_entered" extras))
+
+    ;; node/call-deferred via the same path. queue_free is a 0-arg method;
+    ;; we use a no-op method ("notification") with one fixed arg to
+    ;; exercise spreading. Object::call_deferred(method, ...args) -> the
+    ;; "method" is fixed, args go through extras.
+    (let [extras (array-new)]
+      (array-push-i extras 41)  ;; NOTIFICATION_INTERNAL_PROCESS placeholder
+      (godot-println "[t3e] call_deferred notification(41)...")
+      (object/call-deferred (:: self :ObjectHandle) "notification" extras))
+
+    ;; scenetree/call-group is :void-returning -- exercises the -pack-v
+    ;; variant. No nodes in the "missing" group, so this is a safe no-op.
+    (let [tree   (get-tree)
+          extras (array-new)]
+      (godot-println "[t3e] call_group missing...queue_free...")
+      (scenetree/call-group tree "missing" "queue_free" extras))
+
+    (godot-println "[t3e] done.")))

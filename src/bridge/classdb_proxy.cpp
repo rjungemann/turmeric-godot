@@ -1180,4 +1180,71 @@ TuriValue tg_native_godot_rid_valid(TuriEnv *env, TuriValue *args, uint32_t n, v
     return turi_bool(r.is_valid());
 }
 
+// --- T3.E: vararg dispatch via callv with a trailing ArrayHandle ----------
+
+// Shared body: validate args, build the spread Variant Array, callv.
+// Returns the raw Variant result; sets *ok=false on shape errors.
+static Variant tg_call_pack_dispatch(TuriValue *args, uint32_t n, bool *ok) {
+    *ok = false;
+    if (n < 3) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-call-pack OBJ METHOD fixed... EXTRAS) "
+            "needs OBJ, METHOD, and a trailing ArrayHandle (use (array-new) for none)");
+        return Variant();
+    }
+    if (args[0].tag != TURI_INT || variant_arena_is_handle(args[0].as_int)) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-call-pack) OBJ must be an :int Object handle");
+        return Variant();
+    }
+    if (args[1].tag != TURI_CSTR || !args[1].as_cstr) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-call-pack) METHOD must be a :cstr");
+        return Variant();
+    }
+    Object *obj = (Object *)(intptr_t)args[0].as_int;
+    if (!obj) {
+        UtilityFunctions::printerr("turmeric-godot: (godot-call-pack) OBJ is a null handle");
+        return Variant();
+    }
+    // Trailing ArrayHandle (arena-tagged :int holding a Variant::ARRAY).
+    const Variant *tail_vp = nullptr;
+    if (args[n - 1].tag != TURI_INT || !variant_arena_is_handle(args[n - 1].as_int) ||
+        (tail_vp = variant_arena_lookup(args[n - 1].as_int)) == nullptr ||
+        tail_vp->get_type() != Variant::ARRAY) {
+        UtilityFunctions::printerr(
+            "turmeric-godot: (godot-call-pack) trailing EXTRAS must be an ArrayHandle");
+        return Variant();
+    }
+    Array tail = (Array)*tail_vp;
+
+    Array call_args;
+    // Fixed args: indices [2 .. n-1) -- everything between METHOD and EXTRAS.
+    for (uint32_t i = 2; i + 1 < n; i++) {
+        call_args.push_back(tg_arg_to_variant(args[i], args[1].as_cstr, i));
+    }
+    // Spread the variadic tail. Tail elements are already Variant; no
+    // re-marshalling needed.
+    for (int i = 0; i < tail.size(); i++) {
+        call_args.push_back(tail[i]);
+    }
+    *ok = true;
+    return obj->callv(StringName(args[1].as_cstr), call_args);
+}
+
+TuriValue tg_native_godot_call_pack(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    bool ok = false;
+    Variant result = tg_call_pack_dispatch(args, n, &ok);
+    if (!ok) return turi_nil();
+    return tg_result_to_turi(result);
+}
+
+TuriValue tg_native_godot_call_pack_v(TuriEnv *env, TuriValue *args, uint32_t n, void *ud) {
+    (void)env; (void)ud;
+    bool ok = false;
+    (void)tg_call_pack_dispatch(args, n, &ok);
+    return turi_nil();
+}
+
 } // namespace godot

@@ -187,6 +187,27 @@ TuriValue tg_native_godot_packed_color_push      (TuriEnv *env, TuriValue *args,
 TuriValue tg_native_godot_rid_id    (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 TuriValue tg_native_godot_rid_valid (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
 
+// --- T3.E: vararg dispatch surface ---------------------------------------
+//
+// (godot-call-pack OBJ METHOD fixed-args... EXTRAS-ARRAY-HANDLE)
+//
+// Generic dispatch for is_vararg Godot methods (Object::emit_signal,
+// Object::call, Object::call_deferred, Node::rpc, Node::rpc_id,
+// SceneTree::call_group, ...). Builds the Variant call-arg list as
+// [fixed..., *EXTRAS] then routes through obj->callv(method, list).
+//
+// The trailing EXTRAS arg must be an ArrayHandle (arena-tagged :int);
+// callers construct it via (array-new) / array-push-*. The simpler
+// "no extras" call sites still pay the cost of allocating an empty
+// Array -- the plan calls this the Path-1 default ("works, slightly
+// slow"); Path 2 (real C-ABI varargs) is Tier 4+ if the cost matters.
+//
+// Two registrations:
+//   godot-call-pack    -- dynamic return tag (default for non-void)
+//   godot-call-pack-v  -- :void return (skips post-call marshalling)
+TuriValue tg_native_godot_call_pack   (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_godot_call_pack_v (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 } // namespace godot
 
 #endif
