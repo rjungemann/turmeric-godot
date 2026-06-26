@@ -303,6 +303,35 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
     "timeout"
     handler))
 
+;; --- T4.A starter: cross-script calls via Godot Callable -----------------
+;;
+;; Each .tur script AOT-compiles to its own dlopen'd shared library, so
+;; one script's defns are NOT directly callable from another at the C
+;; ABI level. Until the Tier 4 build-graph (T4.A approach 2) lands,
+;; cross-script calls go through Godot's Callable system -- the same
+;; round-trip GDScript pays per inter-script call. The substrate is
+;; already in place (godot-call routes through Object::callv); these
+;; wrappers just name it as "the cross-script path" so it's discoverable
+;; instead of buried in a generic call.
+;;
+;;   (cross-call other-node "do-thing" arg1 arg2 ...)
+;;     -- variadic-positional flavour; up to 4 fixed args; uses
+;;        godot-call directly so primitives stay primitive and arena
+;;        handles stay arena handles.
+;;   (cross-call-pack other-node "do-thing" extras-array)
+;;     -- arbitrary-arity flavour; pass a (array-new ...) extras
+;;        handle for any arg count. Same machinery the T3.E generated
+;;        vararg wrappers use.
+;;
+;; Note: dispatch on the other script's name uses the kebab-case
+;; turmeric defn name -- e.g. a (defn do-thing [x] ...) in Enemy.tur
+;; is reached as (cross-call enemy-node "do-thing" ...). The bridge's
+;; cb_call normalises the underscore/dash spelling.
+(defn cross-call [other : int method : cstr] : int
+  (godot-call other method))
+(defn cross-call-pack [other : int method : cstr extras : ArrayHandle] : int
+  (godot-call-pack other method (:: extras :int)))
+
 ;; --- G7 -- defgodot-script ergonomic shell --------------------------------
 ;; Plan-shape surface (see docs/upcoming/v1/godot-language-binding-plan.md
 ;; in the turmeric repo for the wider design):
