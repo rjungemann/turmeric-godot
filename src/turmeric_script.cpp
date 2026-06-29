@@ -1,6 +1,7 @@
 #include "turmeric_script.h"
 #include "turmeric_instance.h"
 #include "turmeric_language.h"
+#include <godot_cpp/classes/engine_debugger.hpp>
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -83,6 +84,14 @@ TurmericScript::TurmericScript() {
     // turi_register_default_native -- godot-println is one of them, seeded
     // by TurmericLanguage at init.
     turi_env = turi_env_new();
+
+    // Enable in-editor breakpoint debugger if active
+    if (EngineDebugger::get_singleton()->is_active()) {
+        turi_debug_enable(turi_env, nullptr, nullptr);
+        turi_debug_arm_breakpoints(turi_env);
+        turi_debug_set_pause_handler(turi_env, TurmericLanguage::tg_pause_handler, nullptr);
+        turi_debug_set_bp_match_handler(turi_env, TurmericLanguage::tg_bp_match_handler, nullptr);
+    }
 }
 
 TurmericScript::~TurmericScript() {
@@ -269,7 +278,8 @@ Error TurmericScript::_reload(bool p_keep_state) {
     // (not nullify) so nested reloads — should they ever exist — pop cleanly.
     TurmericScript *prev_reloading = g_reloading_script;
     g_reloading_script = this;
-    TuriValue v = turi_eval(turi_env, src_utf8.get_data());
+    CharString path_utf8 = get_path().utf8();
+    TuriValue v = turi_eval_with_path(turi_env, src_utf8.get_data(), path_utf8.get_data());
     g_reloading_script = prev_reloading;
     if (v.tag == TURI_ERROR) {
         // The diag sink already surfaced the structured diagnostic; this

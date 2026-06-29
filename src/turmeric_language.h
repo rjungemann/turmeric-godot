@@ -7,6 +7,9 @@
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/string_name.hpp>
+extern "C" {
+#include "turi/eval.h"
+}
 
 struct TuriEnv;
 
@@ -83,6 +86,29 @@ public:
 
     // --- Editor surface (called in editor builds) ---
     bool _handles_global_class_type(const String &p_type) const override;
+
+    // --- Debugger Interface (Phase D3) ---
+    String _debug_get_error() const override;
+    int32_t _debug_get_stack_level_count() const override;
+    int32_t _debug_get_stack_level_line(int32_t p_level) const override;
+    String _debug_get_stack_level_function(int32_t p_level) const override;
+    String _debug_get_stack_level_source(int32_t p_level) const override;
+    Dictionary _debug_get_stack_level_locals(int32_t p_level, int32_t p_max_subitems, int32_t p_max_depth) override;
+    Dictionary _debug_get_stack_level_members(int32_t p_level, int32_t p_max_subitems, int32_t p_max_depth) override;
+    void *_debug_get_stack_level_instance(int32_t p_level) override;
+    Dictionary _debug_get_globals(int32_t p_max_subitems, int32_t p_max_depth) override;
+    String _debug_parse_stack_level_expression(int32_t p_level, const String &p_expression, int32_t p_max_subitems, int32_t p_max_depth) override;
+    TypedArray<Dictionary> _debug_get_current_stack_info() override;
+
+    static void tg_pause_handler(TuriEnv *env, TuriDbgStop reason, void *ud);
+    static bool tg_bp_match_handler(TuriEnv *env, const char *file_path, uint32_t line, void *ud);
+
+    void set_active_debug_env(TuriEnv *env) { active_debug_env = env; }
+    TuriEnv *get_active_debug_env() const { return active_debug_env; }
+
+private:
+    TuriEnv *active_debug_env = nullptr;
+public:
 
     // --- Test affordance ---
     // _validate is virtual-only on ScriptLanguageExtension and is not bound

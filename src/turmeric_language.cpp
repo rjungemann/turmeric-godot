@@ -1,4 +1,6 @@
 #include "turmeric_language.h"
+#include <godot_cpp/classes/engine_debugger.hpp>
+#include <godot_cpp/variant/string_name.hpp>
 #include "turmeric_script.h"
 #include "turmeric_instance.h"
 #include "bridge/classdb_proxy.h"
@@ -972,6 +974,125 @@ bool TurmericLanguage::_handles_global_class_type(const String &p_type) const {
     // logs at startup. A real implementation lands when scripts can
     // declare a class_name equivalent.
     (void)p_type;
+    return false;
+}
+
+// --- Debugger Interface (Phase D3) ---
+
+String TurmericLanguage::_debug_get_error() const {
+    return String();
+}
+
+int32_t TurmericLanguage::_debug_get_stack_level_count() const {
+    TuriEnv *env = get_active_debug_env();
+    return env ? turi_debug_frame_count(env) : 0;
+}
+
+int32_t TurmericLanguage::_debug_get_stack_level_line(int32_t p_level) const {
+    TuriEnv *env = get_active_debug_env();
+    if (!env) return 0;
+    TuriDbgFrame frame;
+    if (turi_debug_frame_at(env, p_level, &frame)) {
+        return frame.line;
+    }
+    return 0;
+}
+
+String TurmericLanguage::_debug_get_stack_level_function(int32_t p_level) const {
+    TuriEnv *env = active_debug_env;
+    if (!env) return String();
+    TuriDbgFrame frame;
+    if (turi_debug_frame_at(env, p_level, &frame)) {
+        return String(frame.fn_name);
+    }
+    return String();
+}
+
+String TurmericLanguage::_debug_get_stack_level_source(int32_t p_level) const {
+    TuriEnv *env = get_active_debug_env();
+    if (!env) return String();
+    TuriDbgFrame frame;
+    if (turi_debug_frame_at(env, p_level, &frame)) {
+        return String(frame.file_path);
+    }
+    return String();
+}
+
+static void tg_locals_cb(const char *name, const char *repr, void *ud) {
+    Dictionary *d = (Dictionary *)ud;
+    if (d && name) {
+        (*d)[String(name)] = String(repr);
+    }
+}
+
+Dictionary TurmericLanguage::_debug_get_stack_level_locals(int32_t p_level, int32_t p_max_subitems, int32_t p_max_depth) {
+    Dictionary d;
+    TuriEnv *env = get_active_debug_env();
+    if (!env) return d;
+    turi_debug_frame_locals(env, p_level, tg_locals_cb, &d);
+    return d;
+}
+
+Dictionary TurmericLanguage::_debug_get_stack_level_members(int32_t p_level, int32_t p_max_subitems, int32_t p_max_depth) {
+    return Dictionary();
+}
+
+void *TurmericLanguage::_debug_get_stack_level_instance(int32_t p_level) {
+    return nullptr;
+}
+
+Dictionary TurmericLanguage::_debug_get_globals(int32_t p_max_subitems, int32_t p_max_depth) {
+    return Dictionary();
+}
+
+String TurmericLanguage::_debug_parse_stack_level_expression(int32_t p_level, const String &p_expression, int32_t p_max_subitems, int32_t p_max_depth) {
+    TuriEnv *env = get_active_debug_env();
+    if (!env) return String("<no active debug env>");
+    char res[1024];
+    CharString expr_cs = p_expression.utf8();
+    if (turi_debug_eval_expr(env, p_level, expr_cs.get_data(), res, sizeof(res))) {
+        return String(res);
+    } else {
+        return String("<error: ") + String(res) + String(">");
+    }
+}
+
+TypedArray<Dictionary> TurmericLanguage::_debug_get_current_stack_info() {
+    return TypedArray<Dictionary>();
+}
+
+void TurmericLanguage::tg_pause_handler(TuriEnv *env, TuriDbgStop reason, void *ud) {
+    if (!TurmericLanguage::singleton()) return;
+    TurmericLanguage::singleton()->set_active_debug_env(env);
+
+    // Enter Godot's nested event loop for debugging
+    EngineDebugger::get_singleton()->script_debug(TurmericLanguage::singleton(), true, false);
+
+    TurmericLanguage::singleton()->set_active_debug_env(nullptr);
+
+    // Set the resume mode on libturi based on what was chosen in the editor
+    if (EngineDebugger::get_singleton()->get_lines_left() > 0) {
+        int32_t depth = EngineDebugger::get_singleton()->get_depth();
+        if (depth < 0) {
+            turi_debug_resume_step_out(env);
+        } else if (depth == 0) {
+            turi_debug_resume_step_over(env);
+        } else {
+            turi_debug_resume_step_in(env);
+        }
+    } else {
+        turi_debug_resume_continue(env);
+    }
+}
+
+bool TurmericLanguage::tg_bp_match_handler(TuriEnv *env, const char *file_path, uint32_t line, void *ud) {
+
+    EngineDebugger *dbg = EngineDebugger::get_singleton();
+    if (dbg && dbg->is_active()) {
+        bool is_bp = dbg->is_breakpoint(line, StringName(file_path));
+
+        return is_bp;
+    }
     return false;
 }
 
