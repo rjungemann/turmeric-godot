@@ -4,8 +4,13 @@ turmeric-godot SConstruct.
 
 Driven by the standard godot-cpp SConstruct.
 
-Build (macOS arm64):
-    python3 -m SCons platform=macos arch=arm64 target=template_debug
+Build:
+    python3 -m SCons platform=macos arch=arm64  target=template_debug   # macOS
+    python3 -m SCons platform=linux arch=x86_64 target=template_debug   # Linux
+
+libturi.a (in ../turmeric) must be built PIC on Linux so it can link into the
+GDExtension .so -- configure it with -DCMAKE_POSITION_INDEPENDENT_CODE=ON.
+See README.md "Build" for the full prerequisite steps.
 
 Binaries land under examples/spike/bin/ so the bundled Godot test project can
 load them via `res://bin/...`.

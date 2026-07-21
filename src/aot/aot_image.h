@@ -15,6 +15,7 @@
 #ifndef TURMERIC_GODOT_AOT_IMAGE_H
 #define TURMERIC_GODOT_AOT_IMAGE_H
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
