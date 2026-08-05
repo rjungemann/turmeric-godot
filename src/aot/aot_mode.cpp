@@ -111,6 +111,35 @@ std::string parse_mode_directive(const char *src, size_t len) {
     return std::string();
 }
 
+std::string strip_mode_directive(const char *src, size_t len) {
+    std::string out(src ? src : "", src ? len : 0);
+    if (!src || len == 0) return out;
+    size_t cursor = 0;
+    std::string line;
+    while (true) {
+        size_t line_start = cursor;
+        if (!next_directive_line(src, len, &cursor, &line)) break;
+        if (line_is_skipable(line)) continue;
+        // First non-skippable line. Mirrors parse_mode_directive's stopping
+        // rule exactly, so the two can never disagree about which bytes are
+        // the directive.
+        if (line.size() >= 6 && std::memcmp(line.data(), "#mode", 5) == 0 &&
+            (line[5] == ' ' || line[5] == '\t')) {
+            // Overwrite with spaces rather than deleting the line: the reader
+            // treats blanks as whitespace, and every byte offset after this
+            // point is preserved -- so diagnostics keep reporting the line and
+            // column the user sees in their editor. Deleting would shift every
+            // subsequent diagnostic up by one.
+            for (size_t i = line_start;
+                 i < line_start + line.size() && i < out.size(); i++) {
+                out[i] = ' ';
+            }
+        }
+        break;
+    }
+    return out;
+}
+
 std::string project_execution_mode_setting() {
     ProjectSettings *ps = ProjectSettings::get_singleton();
     if (!ps) return std::string();

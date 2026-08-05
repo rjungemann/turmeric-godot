@@ -45,6 +45,17 @@ std::string project_tur_binary_setting();
 // comments, and an opening `#lang sweet-exp` line.
 std::string parse_mode_directive(const char *src, size_t len);
 
+// Return a copy of the source with a leading `#mode <ident>` directive blanked
+// out (overwritten with spaces, newline kept) so it can be handed to the
+// reader, which has no `#mode` syntax and fails the whole eval with a parse
+// error if it sees one. Blanking rather than deleting preserves every later
+// byte offset -- and so every diagnostic's line and column.
+//
+// Uses the same stopping rule as parse_mode_directive, so the two agree by
+// construction about which bytes are the directive. Sources with no directive
+// come back unchanged.
+std::string strip_mode_directive(const char *src, size_t len);
+
 // Apply the precedence chain. `source` may be null/empty -- the directive
 // step is just skipped. `setting_override` is the project-setting value
 // fetched separately so this function doesn't have to live downstream of
