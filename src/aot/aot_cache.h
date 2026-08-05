@@ -21,10 +21,19 @@ namespace godot {
 namespace aot {
 
 struct BuildOutputs {
-    std::string lib_path;       // absolute path to the built .so
+    // Absolute path to the built shared library. The spelling is the host
+    // platform's: `lib<pkg>.so` on Linux/macOS, `<pkg>.dll` on Windows, which
+    // is what `tur build --shared` produces by default (TUR_SHLIB_PREFIX /
+    // TUR_SHLIB_EXT in the compiler's src/platform_fs.h).
+    std::string lib_path;
     std::string manifest_path;  // absolute path to exports.manifest
     std::string stage_dir;      // absolute path to <hash>/ (parent of build/)
     std::string metadata_path;  // absolute path to the exports.metadata sidecar
+    // Staged package name (`tg_script_<hash12>`). Carried explicitly rather
+    // than recovered by scanning lib_path for "/lib" and ".so": that parse was
+    // already fragile, and it cannot survive a platform whose library has no
+    // `lib` prefix at all.
+    std::string pkg_name;
     bool        cache_hit = false;
 };
 
@@ -64,7 +73,7 @@ BuildOutputs predict_outputs(const std::string &godot_project_dir,
 //
 // `godot_project_dir` is the absolute path to the Godot project root (the
 // dir holding project.godot). When empty, the cache is rooted at
-// `$TMPDIR/turmeric-godot-cache/`.
+// `$TMPDIR/turmeric-godot-cache/` (`%TEMP%` on Windows, which sets no TMPDIR).
 bool ensure_built(const std::string &godot_project_dir,
                   const std::string &script_path,
                   const char *source_bytes, size_t source_len,

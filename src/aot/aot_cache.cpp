@@ -12,8 +12,16 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#ifdef _WIN32
+// MinGW has no <sys/wait.h>: std::system() already returns the child's exit
+// code directly there, so there is nothing to decode. <direct.h> supplies the
+// one-argument _mkdir, and <stdlib.h> the _fullpath that stands in for
+// realpath().
+#  include <direct.h>
+#else
+#  include <sys/wait.h>
+#  include <unistd.h>
+#endif
 
 namespace godot {
 namespace aot {
@@ -22,16 +30,46 @@ namespace {
 
 // --- mkdir -p ---------------------------------------------------------------
 
+// Windows accepts both separators and its mkdir takes no mode (there are no
+// POSIX permission bits to apply), so the component split has to recognise '\\'
+// too -- Godot hands us '/' paths, but an absolute path assembled from a
+// Windows env var or _fullpath comes back with backslashes.
+bool mkdir_one(const std::string &p) {
+#ifdef _WIN32
+    return _mkdir(p.c_str()) == 0 || errno == EEXIST;
+#else
+    return mkdir(p.c_str(), 0755) == 0 || errno == EEXIST;
+#endif
+}
+
+bool is_sep(char c) {
+#ifdef _WIN32
+    return c == '/' || c == '\\';
+#else
+    return c == '/';
+#endif
+}
+
+// True for a prefix that names a filesystem root rather than a directory we
+// could create: "/" everywhere, plus "C:" / "C:/" on Windows. Calling mkdir on
+// a drive root fails with EACCES rather than EEXIST, which would abort the walk.
+bool is_root_prefix(const std::string &acc) {
+    if (acc.empty() || acc == "/") return true;
+#ifdef _WIN32
+    if (acc.size() == 2 && acc[1] == ':') return true;
+    if (acc.size() == 3 && acc[1] == ':' && is_sep(acc[2])) return true;
+#endif
+    return false;
+}
+
 bool mkdir_p(const std::string &path) {
     if (path.empty()) return false;
     std::string acc;
     acc.reserve(path.size());
     for (size_t i = 0; i <= path.size(); i++) {
-        if (i == path.size() || path[i] == '/') {
-            if (!acc.empty() && acc != "/") {
-                if (mkdir(acc.c_str(), 0755) != 0 && errno != EEXIST) {
-                    return false;
-                }
+        if (i == path.size() || is_sep(path[i])) {
+            if (!is_root_prefix(acc) && !mkdir_one(acc)) {
+                return false;
             }
         }
         if (i < path.size()) acc.push_back(path[i]);
@@ -89,7 +127,15 @@ std::string hex_u64(uint64_t v) {
 std::string tur_identity(const std::string &tur_bin) {
     char real[4096];
     std::string ident;
+#ifdef _WIN32
+    // _fullpath is the CRT's realpath: destination first, and it canonicalises
+    // lexically without requiring the path to exist. The stat() below is what
+    // decides whether we actually found the binary, so the weaker guarantee
+    // costs nothing here.
+    if (_fullpath(real, tur_bin.c_str(), sizeof(real))) {
+#else
     if (realpath(tur_bin.c_str(), real)) {
+#endif
         ident.assign(real);
     } else {
         ident = tur_bin;
@@ -104,11 +150,30 @@ std::string tur_identity(const std::string &tur_bin) {
     return ident;
 }
 
-// Shell-quote a path for /bin/sh consumption. We invoke the compiler via a
-// shell so stdout/stderr capture composes; we never embed user-supplied
-// strings without quoting.
+// Quote a path for the shell std::system() will actually use. We invoke the
+// compiler via a shell so stdout/stderr capture composes; we never embed
+// user-supplied strings without quoting.
+//
+// On Windows std::system() runs `cmd.exe /c`, which does NOT understand POSIX
+// single-quoting -- it would pass the quote characters through as part of the
+// filename, so every path containing one (and every path at all, since the
+// quotes become literal) is mangled. cmd.exe quotes with double quotes, inside
+// which its metacharacters (&, |, <, >, ^) lose their meaning. A literal double
+// quote in a path is impossible on Windows -- the filesystem forbids it -- so
+// there is no escape case to handle, only one to reject.
 std::string sh_quote(const std::string &s) {
     std::string out;
+#ifdef _WIN32
+    out.reserve(s.size() + 2);
+    out.push_back('"');
+    for (char c : s) {
+        // Cannot occur in a Windows path; drop rather than emit an unbalanced
+        // quote that would silently re-parse the whole command line.
+        if (c == '"') continue;
+        out.push_back(c);
+    }
+    out.push_back('"');
+#else
     out.reserve(s.size() + 2);
     out.push_back('\'');
     for (char c : s) {
@@ -116,7 +181,23 @@ std::string sh_quote(const std::string &s) {
         else            out.push_back(c);
     }
     out.push_back('\'');
+#endif
     return out;
+}
+
+// Wrap a fully-assembled command for std::system().
+//
+// cmd.exe /c strips the first and last character when the command string both
+// begins and ends with a double quote. Our command begins with a quoted tur
+// path, so without a second enclosing pair the opening quote of the executable
+// is eaten and a path containing spaces splits. Wrapping the whole line is the
+// documented idiom. No-op off Windows.
+std::string shell_command(const std::string &cmd) {
+#ifdef _WIN32
+    return "\"" + cmd + "\"";
+#else
+    return cmd;
+#endif
 }
 
 // Derive a stable, filesystem-safe module name from the script's basename
@@ -184,11 +265,32 @@ std::string resolve_tur_bin(const std::string &project_setting_override) {
 
 std::string cache_root_for(const std::string &godot_project_dir) {
     if (godot_project_dir.empty()) {
+        // Windows sets neither TMPDIR nor has a /tmp, so the POSIX pair would
+        // fall through to an unwritable literal path. TEMP/TMP are what the
+        // CRT and every Windows tool use.
         const char *tmp = std::getenv("TMPDIR");
+#ifdef _WIN32
+        if (!tmp || !*tmp) tmp = std::getenv("TEMP");
+        if (!tmp || !*tmp) tmp = std::getenv("TMP");
+        if (!tmp || !*tmp) tmp = ".";
+#else
         if (!tmp || !*tmp) tmp = "/tmp";
+#endif
         return std::string(tmp) + "/turmeric-godot-cache";
     }
     return godot_project_dir + "/.godot/turmeric-cache";
+}
+
+// Basename the platform's shared library takes for package `pkg`. Mirrors
+// TUR_SHLIB_PREFIX / TUR_SHLIB_EXT in the compiler's src/platform_fs.h -- PE
+// has no `lib` convention, and a `libfoo.so` on Windows is a file the Godot
+// GDExtension loader will not recognise as a module.
+static std::string shlib_basename(const std::string &pkg) {
+#ifdef _WIN32
+    return pkg + ".dll";
+#else
+    return "lib" + pkg + ".so";
+#endif
 }
 
 BuildOutputs predict_outputs(const std::string &godot_project_dir,
@@ -201,11 +303,12 @@ BuildOutputs predict_outputs(const std::string &godot_project_dir,
     const std::string root  = cache_root_for(godot_project_dir);
     const std::string stage = root + "/" + hash;
     const std::string pkg   = std::string("tg_script_") + hash.substr(0, 12);
-    const std::string lib_path = stage + "/build/lib/lib" + pkg + ".so";
+    const std::string lib_path = stage + "/build/lib/" + shlib_basename(pkg);
     o.stage_dir     = stage;
     o.lib_path      = lib_path;
     o.manifest_path = lib_path + ".manifest";
     o.metadata_path = stage + "/exports.metadata";
+    o.pkg_name      = pkg;
     o.cache_hit     = false;
     return o;
 }
@@ -226,16 +329,7 @@ bool ensure_built(const std::string &godot_project_dir,
     const std::string  build_dir     = stage + "/build";
     const std::string  lib_dir       = build_dir + "/lib";
     const std::string  module        = module_name_for(script_path);
-    // pkg name is reconstructed from the hash embedded in lib_path; keep
-    // the staged build.tur naming consistent with predict_outputs.
-    const std::string  pkg = [&]() {
-        const std::string prefix = "/lib";
-        const std::string suffix = ".so";
-        auto pos = lib_path.rfind(prefix);
-        auto epos = lib_path.rfind(suffix);
-        if (pos == std::string::npos || epos == std::string::npos) return std::string();
-        return lib_path.substr(pos + prefix.size(), epos - (pos + prefix.size()));
-    }();
+    const std::string &pkg           = out->pkg_name;
 
     // Fast path -- everything already built. We do not stat the source
     // here because the hash already gates by source bytes.
@@ -291,8 +385,16 @@ bool ensure_built(const std::string &godot_project_dir,
         << " > "           << sh_quote(log_path)
         << " 2>&1";
 
-    int rc = std::system(cmd.str().c_str());
+    int rc = std::system(shell_command(cmd.str()).c_str());
+    // WEXITSTATUS is a <sys/wait.h> macro that decodes a wait(2) status word.
+    // Windows has no such encoding: std::system() hands back the child's exit
+    // code as-is, so decoding it there would shift the value and turn a clean
+    // exit 1 into something meaningless.
+#ifdef _WIN32
+    int exit_code = rc;
+#else
     int exit_code = (rc == -1) ? -1 : WEXITSTATUS(rc);
+#endif
     if (exit_code != 0) {
         // Read the log for diagnostics. Truncate to a sane size so we
         // don't flood the editor's Output panel with megabytes of C
