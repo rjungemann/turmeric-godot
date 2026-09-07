@@ -34,6 +34,26 @@ on:
 
 env:
   TURMERIC_REPO: https://github.com/rjungemann/turmeric.git
+  # The compiler checkout lives INSIDE the workspace (see the checkout step),
+  # so SConstruct's default of ../turmeric no longer finds it. It reads this.
+  #
+  # RELATIVE, deliberately. This was `${{ github.workspace }}/turmeric`, and on
+  # the MSYS2 leg the drive letter did not survive the trip into the shell --
+  # SCons reported the dependency as:
+  #
+  #   `\a\turmeric-godot\turmeric-godot/turmeric/build-rel/src/libturi.a'
+  #
+  # with the leading `D:` gone. That failed in a genuinely confusing way rather
+  # than an obvious one: a path beginning `\` is drive-RELATIVE on Windows, so
+  # SConstruct's own os.path.isfile() probe resolved it against the current
+  # drive and happily reported the archive found. Everything compiled. Only
+  # SCons's node/dependency layer disagreed, at the final link.
+  #
+  # SCons resolves a relative path against the SConstruct directory, which is
+  # where every step that reads this already runs, so a bare `turmeric` is
+  # correct on all four legs and has no drive letter to lose. The two libturi
+  # build steps use `working-directory:` instead and are unaffected.
+  TURMERIC_ROOT: turmeric
 
 jobs:
   build:
@@ -41,29 +61,89 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-14,          platform: macos,   arch: arm64,  lib_suffix: framework }
-          - { os: ubuntu-22.04,      platform: linux,   arch: x86_64, lib_suffix: so }
-          - { os: ubuntu-22.04-arm,  platform: linux,   arch: arm64,  lib_suffix: so }
-          - { os: windows-2022,      platform: windows, arch: x86_64, lib_suffix: dll }
+          - { os: macos-14,          platform: macos,   arch: arm64,  lib_suffix: framework, scons_extra: "" }
+          - { os: ubuntu-22.04,      platform: linux,   arch: x86_64, lib_suffix: so,        scons_extra: "" }
+          - { os: ubuntu-22.04-arm,  platform: linux,   arch: arm64,  lib_suffix: so,        scons_extra: "" }
+          # use_mingw=yes is not optional. godot-cpp's windows tool picks MSVC
+          # whenever `not use_mingw and msvc.exists(env)` (tools/windows.py:86),
+          # and MSVC *does* exist on this runner -- so without it SCons would
+          # build the shim with a different toolchain than libturi.a, which the
+          # shim links statically.
+          - { os: windows-2022,      platform: windows, arch: x86_64, lib_suffix: dll,       scons_extra: "use_mingw=yes" }
     runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        # MSYS2 on Windows so gcc/cmake/ninja/scons from UCRT64 are the ones on
+        # PATH. Everywhere else the steps are already written for a POSIX shell
+        # (`set -euo pipefail`, find | xargs), so name bash rather than inherit
+        # pwsh on the Windows leg by accident.
+        shell: ${{ matrix.platform == 'windows' && 'msys2 {0}' || 'bash' }}
+
     steps:
       - name: Checkout turmeric-godot (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      # `path:` MUST stay inside the workspace. This step used to say
+      # `../turmeric`, mirroring the sibling-checkout layout developers use
+      # locally, and actions/checkout refuses it outright:
+      #
+      #   Repository path '/home/runner/work/turmeric-godot/turmeric' is not
+      #   under '/home/runner/work/turmeric-godot/turmeric-godot'
+      #
+      # Every matrix leg died there in ~6 seconds, which is why this workflow
+      # had never once produced a green build on ANY platform -- Windows was
+      # not specially broken, nothing was ever compiled at all.
+      #
+      # The compiler is pinned to a RELEASED TAG rather than floating to main.
+      # An unpinned dependency turns this job red for reasons that have nothing
+      # to do with the commit under test, and the shim links libturi.a
+      # statically -- so "which turmeric" is part of what a green run attests.
       - name: Checkout sibling turmeric
         uses: actions/checkout@v4
         with:
           repository: rjungemann/turmeric
-          path: ../turmeric
+          ref: v0.44.2
+          path: turmeric
+
+      # Windows is a MinGW-w64 / UCRT64 build, which SConstruct's header states
+      # outright: "run this from an MSYS2 UCRT64 shell, and build godot-cpp with
+      # use_mingw=yes". The first CI run to get this far proved why -- with the
+      # stock runner toolchain CMake selected Visual Studio 17 2022 and MSVC
+      # rejected turmeric's GCC warning flags in 53 seconds:
+      #
+      #   cl : command line error D8021: invalid numeric argument '/Wextra'
+      #
+      # It is not merely that turmeric wants GCC. libturi.a is linked
+      # STATICALLY into the shim, so both halves have to come from one
+      # toolchain; building the shim with MSVC against a MinGW archive is not a
+      # thing that links.
+      #
+      # scons comes from pacman rather than pip: the UCRT64 package installs
+      # into the same python that is on PATH inside this shell, whereas
+      # actions/setup-python would put a *Windows* python ahead of it.
+      - name: Setup MSYS2 (Windows)
+        if: matrix.platform == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-scons
 
       - name: Setup Python
+        if: matrix.platform != 'windows'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install SCons
+        if: matrix.platform != 'windows'
         run: python -m pip install --upgrade scons
 
       # libturi.a comes from the sibling turmeric checkout. We build it
@@ -75,23 +155,28 @@ jobs:
       # no-op on macOS, which compiles PIC by default.
       - name: Build libturi.a (macos/linux)
         if: matrix.platform != 'windows'
-        working-directory: ../turmeric
+        working-directory: turmeric
         run: |
           cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
           cmake --build build-rel --target libturi -j
 
+      # -G Ninja pins the generator explicitly. Without it CMake defaults to
+      # Visual Studio even from inside the MSYS2 shell, which is exactly the
+      # failure this leg has already produced once. Ninja is also single-config,
+      # so CMAKE_BUILD_TYPE is what selects Release and the old `--config
+      # Release` on the build line is meaningless here and dropped.
       - name: Build libturi.a (windows)
         if: matrix.platform == 'windows'
-        working-directory: ../turmeric
+        working-directory: turmeric
         run: |
-          cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-          cmake --build build-rel --target libturi --config Release -j
+          cmake -S . -B build-rel -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build-rel --target libturi -j
 
       - name: Build GDExtension (template_debug)
-        run: python -m SCons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=template_debug -j2
+        run: python -m SCons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=template_debug ${{ matrix.scons_extra }} -j2
 
       - name: Build GDExtension (template_release)
-        run: python -m SCons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=template_release -j2
+        run: python -m SCons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=template_release ${{ matrix.scons_extra }} -j2
 
       # macOS-only: ad-hoc sign so the build host doesn't leave the dylib
       # flagged as "unsigned." Cheap, always runs, no secrets required.

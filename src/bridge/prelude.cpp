@@ -54,6 +54,21 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 (defopaque PackedColorHandle   :int)
 (defopaque RidHandle           :int)
 
+;; These two are ALSO declared by the generated facade
+;; (generated_facade.cpp: `defopaque ResourceHandle` / `SceneTreeHandle`), but
+;; that is evaluated AFTER this prelude -- deliberately, so curated names win
+;; over the per-class generated forms. `get-tree` and `preload` below return
+;; them, so without a declaration here the prelude forward-references types that
+;; do not exist yet and the whole eval fails with "unsupported return type
+;; keyword 'SceneTreeHandle'", taking every script load with it.
+;;
+;; Re-declaring is safe: a second `defopaque` of the same name over the same
+;; representation is accepted, and both spellings here are `:int`, identical to
+;; the facade's. Keep them that way -- if the facade's representation ever
+;; changes, these must change with it.
+(defopaque ResourceHandle      :int)
+(defopaque SceneTreeHandle     :int)
+
 (defn nh->int [h : NodeHandle] : int (:: h :int))
 (defn int->nh [i : int] : NodeHandle (:: i :NodeHandle))
 (defn vec2h->int [h : Vec2Handle] : int (:: h :int))

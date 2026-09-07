@@ -2,15 +2,28 @@
 
 A Godot 4 GDExtension that registers Turmeric (`.tur`) as a scripting language.
 
-**Status:** G2 in progress -- script source is evaluated by libturi, lifecycle
-hooks (`_ready`, `_process`, `_input`, ...) dispatch to user defns,
-`load("res://x.tur")` round-trips through the ResourceFormatLoader,
-`(godot-export ...)` properties round-trip to the inspector, and
-`(godot-signal ...)` declarations surface in the Node dock with
-`(emit-signal ...)` firing them at runtime. AOT mode and the paddle-pong
-demo are still pending. See
-[`docs/upcoming/v1/godot-language-binding-plan.md`](https://github.com/rjungemann/turmeric/blob/main/docs/upcoming/v1/godot-language-binding-plan.md)
-in the turmeric repo for the full plan.
+**Status:** v1 scope complete, plus a post-v1 T3/T4 follow-up series. Script
+source is evaluated by libturi, lifecycle hooks (`_ready`, `_process`,
+`_input`, ...) dispatch to user defns, `load("res://x.tur")` round-trips
+through the ResourceFormatLoader, `(godot-export ...)` properties round-trip
+to the inspector, and `(godot-signal ...)` declarations surface in the Node
+dock with `(emit-signal ...)` firing them at runtime. The `defgodot-script`
+block surface, the ClassDB allowlist (53 classes), the paddle-pong demo and
+the AOT cache have all landed; macOS, Linux and Windows all build.
+
+**One caveat worth reading before you reach for it:** the AOT path cannot
+currently compile a script that touches the engine. It stages the script into
+a transient project built by standalone `tur`, which has no `godot-*` natives
+-- those are C++ functions this extension registers into the interpreter env
+at run time -- so the staged build stops at the first one. The interpreter
+path is unaffected and is what the demos use. See
+[godot-aot-staged-build-lacks-godot-natives](https://github.com/rjungemann/turmeric/blob/main/docs/reported/godot-aot-staged-build-lacks-godot-natives.md).
+
+Plans, in the turmeric repo:
+[the completed v1 plan](https://github.com/rjungemann/turmeric/blob/main/docs/archive/godot-language-binding-plan.md)
+and
+[the current refresh](https://github.com/rjungemann/turmeric/blob/main/docs/upcoming/godot-binding-refresh-plan.md),
+which covers what came after it and sequences the remaining work.
 
 ## Script-side natives
 
@@ -63,10 +76,20 @@ python3 -m SCons platform=macos arch=arm64 target=template_debug
 
 # Linux (x86_64)
 python3 -m SCons platform=linux arch=x86_64 target=template_debug
+
+# Windows (x86_64) -- from an MSYS2 UCRT64 shell
+python3 -m SCons platform=windows arch=x86_64 target=template_debug
 ```
 
 Swap `target=template_release` for the release variant. Binaries land in
 `examples/spike/bin/`; the `.gdextension` manifests point at them.
+
+> **Windows:** build with MinGW-w64 under MSYS2 UCRT64, matching how `libturi.a`
+> itself is built -- the shim links that archive statically, so the two must come
+> from the same toolchain. `SConstruct` *searches* for `libturi.a` rather than
+> assuming `build-rel/`, because the Windows bring-up builds into `build-win/`;
+> it prints which archive it chose. Point it somewhere explicit with
+> `libturi=<path>` or `TURMERIC_LIBTURI` when you have more than one build tree.
 
 ## Try it
 

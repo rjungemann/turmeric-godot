@@ -172,6 +172,17 @@ Error TurmericScript::_reload(bool p_keep_state) {
         src_utf8_early.get_data(), (size_t)src_utf8_early.length());
     const bool aot_enabled = (mode == aot::ExecutionMode::Aot) &&
                               !get_path().is_empty();
+    // `#mode` is OUR directive -- resolve_execution_mode has just consumed it,
+    // and neither the reader nor `tur` has any syntax for it. Passing it on
+    // fails with a parse error, which made the documented per-script knob
+    // unusable on every platform (it is also why forcing AOT never worked).
+    // Strip once, here, so BOTH consumers below see clean source: the
+    // interpreter eval, and the AOT path that writes the staged copy to disk
+    // for `tur build --shared`. Blanked rather than deleted, so byte offsets
+    // and therefore diagnostic line numbers are unchanged.
+    const std::string src_clean =
+        aot::strip_mode_directive(src_utf8_early.get_data(),
+                                  (size_t)src_utf8_early.length());
     aot_image_.reset();
 
     const String aot_prefix = aot_diag_prefix(
@@ -183,8 +194,8 @@ Error TurmericScript::_reload(bool p_keep_state) {
         String project_abs = ps ? ps->globalize_path(String("res://")) : String();
         CharString project_cs = project_abs.utf8();
         CharString script_cs  = script_abs.utf8();
-        const char *src_ptr = src_utf8_early.get_data();
-        size_t      src_len = (size_t)src_utf8_early.length();
+        const char *src_ptr = src_clean.c_str();
+        size_t      src_len = src_clean.size();
         std::string tur_bin = aot::resolve_tur_bin(aot::project_tur_binary_setting());
 
         aot::BuildOutputs preds = aot::predict_outputs(
@@ -279,7 +290,7 @@ Error TurmericScript::_reload(bool p_keep_state) {
     TurmericScript *prev_reloading = g_reloading_script;
     g_reloading_script = this;
     CharString path_utf8 = get_path().utf8();
-    TuriValue v = turi_eval_with_path(turi_env, src_utf8.get_data(), path_utf8.get_data());
+    TuriValue v = turi_eval_with_path(turi_env, src_clean.c_str(), path_utf8.get_data());
     g_reloading_script = prev_reloading;
     if (v.tag == TURI_ERROR) {
         // The diag sink already surfaced the structured diagnostic; this
@@ -302,8 +313,8 @@ Error TurmericScript::_reload(bool p_keep_state) {
         String project_abs  = ps ? ps->globalize_path(String("res://")) : String();
         CharString project_cs = project_abs.utf8();
         CharString script_cs  = script_abs.utf8();
-        const char *src_ptr  = src_utf8.get_data();
-        size_t      src_len  = (size_t)src_utf8.length();
+        const char *src_ptr  = src_clean.c_str();
+        size_t      src_len  = src_clean.size();
         std::string tur_bin  = aot::resolve_tur_bin(std::string());
 
         aot::BuildOutputs outs;

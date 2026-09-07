@@ -3,7 +3,17 @@
 #include "aot_image.h"
 
 #include <cstring>
-#include <dlfcn.h>
+#ifdef _WIN32
+// MinGW ships no <dlfcn.h>. The compiler repo already carries the
+// LoadLibrary/GetProcAddress shim it uses for exactly this, and the SConstruct
+// puts <turmeric_root>/src on CPPPATH -- so reuse it rather than growing a
+// second, subtly-different copy here. It supplies dlopen/dlsym/dlclose plus the
+// RTLD_* flags, and its dlerror() keeps the clear-on-read semantics the dlsym
+// loop below depends on.
+#  include "platform_dl.h"
+#else
+#  include <dlfcn.h>
+#endif
 #include <fstream>
 #include <string>
 

@@ -1,0 +1,39 @@
+# Normalise line endings to LF in the repository and the working tree on every
+# platform.
+#
+# Git for Windows defaults to core.autocrlf=true. Without this file, a Windows
+# contributor's commits can land CRLF in the stored blobs -- which is exactly
+# what happened during the Windows bring-up: `src/turmeric_script.cpp` went from
+# 0 CR bytes upstream to 457 in a single commit, invisibly, because the diff
+# still reads cleanly on the machine that made it. Everyone else then sees a
+# whole-file rewrite on the next touch.
+#
+# It also matters for correctness, not just diff hygiene: the `.tur` scripts
+# under examples/ are fed to the Turmeric reader, and the compiler copies
+# inline-C block bodies VERBATIM into generated C. Stray \r bytes ride along.
+# The compiler repo pins eol=lf for that reason; this repo should match.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.svg    text
+*.ttf    binary
+*.otf    binary
+*.wav    binary
+*.ogg    binary
+*.mp3    binary
+
+# Build artifacts. Normally gitignored, but marked so a stray `git add -f`
+# cannot corrupt one.
+*.dll    binary
+*.so     binary
+*.dylib  binary
+*.a      binary
+*.o      binary
+*.obj    binary
+*.exe    binary
+*.lib    binary

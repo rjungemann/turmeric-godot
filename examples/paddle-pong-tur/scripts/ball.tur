@@ -22,11 +22,11 @@
     (if (< new-y 0.0)
       (do
         (godot-prop-set "vel-y" (- 0.0 vy))
-        (node/set-position self (godot-vec2 new-x 0.0)))
+        (node/set-position self (node/vec2 new-x 0.0)))
       ;; Bottom wall: flip vel-y if we'd cross below bound.
       (if (> new-y bound)
         (do
           (godot-prop-set "vel-y" (- 0.0 vy))
-          (node/set-position self (godot-vec2 new-x bound)))
+          (node/set-position self (node/vec2 new-x bound)))
         ;; Otherwise: just move.
-        (node/set-position self (godot-vec2 new-x new-y))))))
+        (node/set-position self (node/vec2 new-x new-y))))))

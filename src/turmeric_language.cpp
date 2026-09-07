@@ -623,7 +623,7 @@ void TurmericLanguage::init_turi() {
     //     can declare honest signatures (godot-vec2-x : float, etc.).
     turi_register_default_native_typed("godot-println",   tg_native_println,      nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-export",    tg_native_export,       nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-prop-get",  tg_native_prop_get,     nullptr);                  // dynamic
+    turi_register_default_native_typed("godot-prop-get",  tg_native_prop_get,     nullptr, TUR_NRT_INT);                  // dynamic
     // Typed aliases over the same C dispatch -- callers pick by property
     // type (float / int / bool) and the elaborator sees the right return
     // type for arithmetic / branching at the use site.
@@ -636,52 +636,52 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native_typed("emit-signal",     tg_native_emit_signal,  nullptr, TUR_NRT_VOID);
 
     // G3.a -- generic ClassDB proxy + Variant arena.
-    turi_register_default_native      ("godot-self",       tg_native_godot_self,    nullptr);                // :int Object handle
-    turi_register_default_native      ("godot-singleton",  tg_native_godot_singleton, nullptr);              // :int Object handle
+    turi_register_default_native_typed("godot-self",       tg_native_godot_self,    nullptr, TUR_NRT_INT);                // :int Object handle
+    turi_register_default_native_typed("godot-singleton",  tg_native_godot_singleton, nullptr, TUR_NRT_INT);              // :int Object handle
     turi_register_default_native_typed("godot-num->str",  tg_native_godot_num_to_str, nullptr, TUR_NRT_CSTR);
     turi_register_default_native_typed("godot-connect",       tg_native_godot_connect,       nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-connect-typed", tg_native_godot_connect_typed, nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-call",       tg_native_godot_call,    nullptr);                // dynamic
+    turi_register_default_native_typed("godot-call",       tg_native_godot_call,    nullptr, TUR_NRT_INT);                // dynamic
     // Codegen v2 typed variants -- gen_godot_facade.py picks the right one
     // per JSON return type so the generated wrapper declares an honest type.
     turi_register_default_native_typed("godot-call-v",     tg_native_godot_call_v,  nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-call-f",     tg_native_godot_call_f,  nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-call-b",     tg_native_godot_call_b,  nullptr, TUR_NRT_BOOL);
     turi_register_default_native_typed("godot-call-c",     tg_native_godot_call_c,  nullptr, TUR_NRT_CSTR);
-    turi_register_default_native      ("godot-vec2",       tg_native_godot_vec2,    nullptr);                // :int arena handle
-    turi_register_default_native      ("godot-vec3",       tg_native_godot_vec3,    nullptr);
+    turi_register_default_native_typed("godot-vec2",       tg_native_godot_vec2,    nullptr, TUR_NRT_INT);                // :int arena handle
+    turi_register_default_native_typed("godot-vec3",       tg_native_godot_vec3,    nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-vec2-x",     tg_native_godot_vec2_x,  nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-vec2-y",     tg_native_godot_vec2_y,  nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-vec3-x",     tg_native_godot_vec3_x,  nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-vec3-y",     tg_native_godot_vec3_y,  nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-vec3-z",     tg_native_godot_vec3_z,  nullptr, TUR_NRT_FLOAT);
-    turi_register_default_native      ("godot-color",      tg_native_godot_color,   nullptr);
+    turi_register_default_native_typed("godot-color",      tg_native_godot_color,   nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-color-r",    tg_native_godot_color_r, nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-color-g",    tg_native_godot_color_g, nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-color-b",    tg_native_godot_color_b, nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-color-a",    tg_native_godot_color_a, nullptr, TUR_NRT_FLOAT);
 
     // G3.a follow-up -- Rect2 / Transform / Array / Dictionary.
-    turi_register_default_native      ("godot-rect2",            tg_native_godot_rect2,            nullptr);
+    turi_register_default_native_typed("godot-rect2",            tg_native_godot_rect2,            nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-rect2-x",          tg_native_godot_rect2_x,          nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-rect2-y",          tg_native_godot_rect2_y,          nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-rect2-w",          tg_native_godot_rect2_w,          nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-rect2-h",          tg_native_godot_rect2_h,          nullptr, TUR_NRT_FLOAT);
-    turi_register_default_native      ("godot-xform2d-origin",   tg_native_godot_xform2d_origin,   nullptr);  // vec2 handle
+    turi_register_default_native_typed("godot-xform2d-origin",   tg_native_godot_xform2d_origin,   nullptr, TUR_NRT_INT);  // vec2 handle
     turi_register_default_native_typed("godot-xform2d-rotation", tg_native_godot_xform2d_rotation, nullptr, TUR_NRT_FLOAT);
-    turi_register_default_native      ("godot-xform3d-origin",   tg_native_godot_xform3d_origin,   nullptr);  // vec3 handle
-    turi_register_default_native      ("godot-array-len",        tg_native_godot_array_len,        nullptr);  // :int length
-    turi_register_default_native      ("godot-array-get",        tg_native_godot_array_get,        nullptr);  // dynamic
+    turi_register_default_native_typed("godot-xform3d-origin",   tg_native_godot_xform3d_origin,   nullptr, TUR_NRT_INT);  // vec3 handle
+    turi_register_default_native_typed("godot-array-len",        tg_native_godot_array_len,        nullptr, TUR_NRT_INT);  // :int length
+    turi_register_default_native_typed("godot-array-get",        tg_native_godot_array_get,        nullptr, TUR_NRT_INT);  // dynamic
     turi_register_default_native_typed("godot-dict-has",         tg_native_godot_dict_has,         nullptr, TUR_NRT_BOOL);
-    turi_register_default_native      ("godot-dict-get",         tg_native_godot_dict_get,         nullptr);  // dynamic
+    turi_register_default_native_typed("godot-dict-get",         tg_native_godot_dict_get,         nullptr, TUR_NRT_INT);  // dynamic
     // T3.C -- Array/Dictionary construction, mutation, typed reads.
-    turi_register_default_native      ("godot-array-new",        tg_native_godot_array_new,        nullptr);  // ArrayHandle (arena)
+    turi_register_default_native_typed("godot-array-new",        tg_native_godot_array_new,        nullptr, TUR_NRT_INT);  // ArrayHandle (arena)
     turi_register_default_native_typed("godot-array-push",       tg_native_godot_array_push,       nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-array-get-i",      tg_native_godot_array_get_i,      nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-array-get-f",      tg_native_godot_array_get_f,      nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-array-get-b",      tg_native_godot_array_get_b,      nullptr, TUR_NRT_BOOL);
     turi_register_default_native_typed("godot-array-get-c",      tg_native_godot_array_get_c,      nullptr, TUR_NRT_CSTR);
-    turi_register_default_native      ("godot-dict-new",         tg_native_godot_dict_new,         nullptr);  // DictHandle (arena)
+    turi_register_default_native_typed("godot-dict-new",         tg_native_godot_dict_new,         nullptr, TUR_NRT_INT);  // DictHandle (arena)
     turi_register_default_native_typed("godot-dict-set",         tg_native_godot_dict_set,         nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-dict-get-i",       tg_native_godot_dict_get_i,       nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-dict-get-f",       tg_native_godot_dict_get_f,       nullptr, TUR_NRT_FLOAT);
@@ -689,37 +689,37 @@ void TurmericLanguage::init_turi() {
     turi_register_default_native_typed("godot-dict-get-c",       tg_native_godot_dict_get_c,       nullptr, TUR_NRT_CSTR);
     // T3.D -- PackedXxxArray (8 element-type families) + RID.
     turi_register_default_native_typed("godot-packed-size",          tg_native_godot_packed_size,          nullptr, TUR_NRT_INT);
-    turi_register_default_native      ("godot-packed-byte-new",      tg_native_godot_packed_byte_new,      nullptr);
+    turi_register_default_native_typed("godot-packed-byte-new",      tg_native_godot_packed_byte_new,      nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-byte-get",      tg_native_godot_packed_byte_get,      nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-byte-push",     tg_native_godot_packed_byte_push,     nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-int32-new",     tg_native_godot_packed_int32_new,     nullptr);
+    turi_register_default_native_typed("godot-packed-int32-new",     tg_native_godot_packed_int32_new,     nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-int32-get",     tg_native_godot_packed_int32_get,     nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-int32-push",    tg_native_godot_packed_int32_push,    nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-int64-new",     tg_native_godot_packed_int64_new,     nullptr);
+    turi_register_default_native_typed("godot-packed-int64-new",     tg_native_godot_packed_int64_new,     nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-int64-get",     tg_native_godot_packed_int64_get,     nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-int64-push",    tg_native_godot_packed_int64_push,    nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-float32-new",   tg_native_godot_packed_float32_new,   nullptr);
+    turi_register_default_native_typed("godot-packed-float32-new",   tg_native_godot_packed_float32_new,   nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-float32-get",   tg_native_godot_packed_float32_get,   nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-packed-float32-push",  tg_native_godot_packed_float32_push,  nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-float64-new",   tg_native_godot_packed_float64_new,   nullptr);
+    turi_register_default_native_typed("godot-packed-float64-new",   tg_native_godot_packed_float64_new,   nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-float64-get",   tg_native_godot_packed_float64_get,   nullptr, TUR_NRT_FLOAT);
     turi_register_default_native_typed("godot-packed-float64-push",  tg_native_godot_packed_float64_push,  nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-string-new",    tg_native_godot_packed_string_new,    nullptr);
+    turi_register_default_native_typed("godot-packed-string-new",    tg_native_godot_packed_string_new,    nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-packed-string-get",    tg_native_godot_packed_string_get,    nullptr, TUR_NRT_CSTR);
     turi_register_default_native_typed("godot-packed-string-push",   tg_native_godot_packed_string_push,   nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-vec2-new",      tg_native_godot_packed_vec2_new,      nullptr);
-    turi_register_default_native      ("godot-packed-vec2-get",      tg_native_godot_packed_vec2_get,      nullptr);  // Vec2Handle (arena)
+    turi_register_default_native_typed("godot-packed-vec2-new",      tg_native_godot_packed_vec2_new,      nullptr, TUR_NRT_INT);
+    turi_register_default_native_typed("godot-packed-vec2-get",      tg_native_godot_packed_vec2_get,      nullptr, TUR_NRT_INT);  // Vec2Handle (arena)
     turi_register_default_native_typed("godot-packed-vec2-push",     tg_native_godot_packed_vec2_push,     nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-vec3-new",      tg_native_godot_packed_vec3_new,      nullptr);
-    turi_register_default_native      ("godot-packed-vec3-get",      tg_native_godot_packed_vec3_get,      nullptr);  // Vec3Handle (arena)
+    turi_register_default_native_typed("godot-packed-vec3-new",      tg_native_godot_packed_vec3_new,      nullptr, TUR_NRT_INT);
+    turi_register_default_native_typed("godot-packed-vec3-get",      tg_native_godot_packed_vec3_get,      nullptr, TUR_NRT_INT);  // Vec3Handle (arena)
     turi_register_default_native_typed("godot-packed-vec3-push",     tg_native_godot_packed_vec3_push,     nullptr, TUR_NRT_VOID);
-    turi_register_default_native      ("godot-packed-color-new",     tg_native_godot_packed_color_new,     nullptr);
-    turi_register_default_native      ("godot-packed-color-get",     tg_native_godot_packed_color_get,     nullptr);  // ColorHandle (arena)
+    turi_register_default_native_typed("godot-packed-color-new",     tg_native_godot_packed_color_new,     nullptr, TUR_NRT_INT);
+    turi_register_default_native_typed("godot-packed-color-get",     tg_native_godot_packed_color_get,     nullptr, TUR_NRT_INT);  // ColorHandle (arena)
     turi_register_default_native_typed("godot-packed-color-push",    tg_native_godot_packed_color_push,    nullptr, TUR_NRT_VOID);
     turi_register_default_native_typed("godot-rid-id",               tg_native_godot_rid_id,               nullptr, TUR_NRT_INT);
     turi_register_default_native_typed("godot-rid-valid?",           tg_native_godot_rid_valid,            nullptr, TUR_NRT_BOOL);
     // T3.E -- generic variadic dispatch (callv with a trailing ArrayHandle).
-    turi_register_default_native      ("godot-call-pack",             tg_native_godot_call_pack,            nullptr);                  // dynamic
+    turi_register_default_native_typed("godot-call-pack",             tg_native_godot_call_pack,            nullptr, TUR_NRT_INT);                  // dynamic
     turi_register_default_native_typed("godot-call-pack-v",           tg_native_godot_call_pack_v,          nullptr, TUR_NRT_VOID);
     // T4.D -- preload (compile-time-validated resource load).
     turi_register_default_native_typed("godot-preload",                tg_native_godot_preload,              nullptr, TUR_NRT_INT);     // Object handle
