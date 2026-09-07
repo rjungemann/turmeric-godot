@@ -36,7 +36,24 @@ env:
   TURMERIC_REPO: https://github.com/rjungemann/turmeric.git
   # The compiler checkout lives INSIDE the workspace (see the checkout step),
   # so SConstruct's default of ../turmeric no longer finds it. It reads this.
-  TURMERIC_ROOT: ${{ github.workspace }}/turmeric
+  #
+  # RELATIVE, deliberately. This was `${{ github.workspace }}/turmeric`, and on
+  # the MSYS2 leg the drive letter did not survive the trip into the shell --
+  # SCons reported the dependency as:
+  #
+  #   `\a\turmeric-godot\turmeric-godot/turmeric/build-rel/src/libturi.a'
+  #
+  # with the leading `D:` gone. That failed in a genuinely confusing way rather
+  # than an obvious one: a path beginning `\` is drive-RELATIVE on Windows, so
+  # SConstruct's own os.path.isfile() probe resolved it against the current
+  # drive and happily reported the archive found. Everything compiled. Only
+  # SCons's node/dependency layer disagreed, at the final link.
+  #
+  # SCons resolves a relative path against the SConstruct directory, which is
+  # where every step that reads this already runs, so a bare `turmeric` is
+  # correct on all four legs and has no drive letter to lose. The two libturi
+  # build steps use `working-directory:` instead and are unaffected.
+  TURMERIC_ROOT: turmeric
 
 jobs:
   build:
