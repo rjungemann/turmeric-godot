@@ -34,6 +34,9 @@ on:
 
 env:
   TURMERIC_REPO: https://github.com/rjungemann/turmeric.git
+  # The compiler checkout lives INSIDE the workspace (see the checkout step),
+  # so SConstruct's default of ../turmeric no longer finds it. It reads this.
+  TURMERIC_ROOT: ${{ github.workspace }}/turmeric
 
 jobs:
   build:
@@ -52,11 +55,27 @@ jobs:
         with:
           submodules: recursive
 
+      # `path:` MUST stay inside the workspace. This step used to say
+      # `../turmeric`, mirroring the sibling-checkout layout developers use
+      # locally, and actions/checkout refuses it outright:
+      #
+      #   Repository path '/home/runner/work/turmeric-godot/turmeric' is not
+      #   under '/home/runner/work/turmeric-godot/turmeric-godot'
+      #
+      # Every matrix leg died there in ~6 seconds, which is why this workflow
+      # had never once produced a green build on ANY platform -- Windows was
+      # not specially broken, nothing was ever compiled at all.
+      #
+      # The compiler is pinned to a RELEASED TAG rather than floating to main.
+      # An unpinned dependency turns this job red for reasons that have nothing
+      # to do with the commit under test, and the shim links libturi.a
+      # statically -- so "which turmeric" is part of what a green run attests.
       - name: Checkout sibling turmeric
         uses: actions/checkout@v4
         with:
           repository: rjungemann/turmeric
-          path: ../turmeric
+          ref: v0.44.2
+          path: turmeric
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -75,14 +94,14 @@ jobs:
       # no-op on macOS, which compiles PIC by default.
       - name: Build libturi.a (macos/linux)
         if: matrix.platform != 'windows'
-        working-directory: ../turmeric
+        working-directory: turmeric
         run: |
           cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
           cmake --build build-rel --target libturi -j
 
       - name: Build libturi.a (windows)
         if: matrix.platform == 'windows'
-        working-directory: ../turmeric
+        working-directory: turmeric
         run: |
           cmake -S . -B build-rel -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build build-rel --target libturi --config Release -j
