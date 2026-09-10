@@ -2,6 +2,8 @@
 
 #include "aot_cache.h"
 
+#include "aot_natives.h"
+
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -91,13 +93,6 @@ bool write_file(const std::string &path, const std::string &content) {
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     if (!out) return false;
     out.write(content.data(), (std::streamsize)content.size());
-    return out.good();
-}
-
-bool write_file_bytes(const std::string &path, const char *data, size_t len) {
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    if (!out) return false;
-    out.write(data, (std::streamsize)len);
     return out.good();
 }
 
@@ -239,12 +234,30 @@ std::string make_build_tur(const std::string &pkg_name) {
 // Public API
 // ----------------------------------------------------------------------------
 
+// The staged `tg-godot` module is identical for every script in a build, so
+// hash it once and mix the digest into each script's key. A prelude edit or a
+// new row in bridge/native_abi.h then invalidates every cache slot, which is
+// what we want: the staged declarations are as much an input to the build as
+// the script itself.
+static uint64_t natives_module_digest() {
+    static const uint64_t digest = []() {
+        const std::string m = staged_natives_module();
+        return fnv1a64_update(FNV64_OFFSET, m.data(), m.size());
+    }();
+    return digest;
+}
+
 std::string compute_script_hash(const std::string &script_path,
                                 const char *source_bytes, size_t source_len,
                                 const std::string &tur_bin) {
     std::string ident = tur_identity(tur_bin);
     uint64_t h = FNV64_OFFSET;
     h = fnv1a64_update(h, ident.data(), ident.size());
+    {
+        const uint64_t nd = natives_module_digest();
+        h = fnv1a64_update(h, "|natives=", 9);
+        h = fnv1a64_update(h, &nd, sizeof(nd));
+    }
     // Domain separator so script_path / source / ident are not silently
     // concatenable across boundaries.
     h = fnv1a64_update(h, "|path=", 6);
@@ -354,8 +367,24 @@ bool ensure_built(const std::string &godot_project_dir,
         err->message = "turmeric-godot AOT: failed to write staged build.tur";
         return false;
     }
+    // The declarations module. Written before the script so a partially
+    // staged tree never has a source that imports a file that isn't there.
+    const std::string natives_path = src_dir + "/" + kNativesModuleFile;
+    if (!write_file(natives_path, staged_natives_module())) {
+        err->message = "turmeric-godot AOT: failed to write staged natives module: "
+                     + natives_path;
+        return false;
+    }
+
+    // The script, rewritten into module shape so it can import the
+    // declarations above -- see prepare_staged_source. Nothing moves line, so
+    // the staged copy's diagnostics still name the user's line numbers.
+    const std::string staged_source =
+        prepare_staged_source(std::string(source_bytes ? source_bytes : "",
+                                           source_bytes ? source_len : 0),
+                               module);
     const std::string staged_src = src_dir + "/" + module + ".tur";
-    if (!write_file_bytes(staged_src, source_bytes, source_len)) {
+    if (!write_file(staged_src, staged_source)) {
         err->message = "turmeric-godot AOT: failed to write staged source: " + staged_src;
         return false;
     }
@@ -404,6 +433,10 @@ bool ensure_built(const std::string &godot_project_dir,
         ss << in.rdbuf();
         std::string log = ss.str();
         if (log.size() > 16384) log.resize(16384);
+        // A staged build most often fails on a native that only exists on the
+        // interpreter path; say so, rather than leaving the user with a bare
+        // "unknown function or operator".
+        log = annotate_build_log(log);
         err->exit_code = exit_code;
         err->message = "turmeric-godot AOT: `tur build --shared` failed (exit "
                      + std::to_string(exit_code) + "):\n" + log;

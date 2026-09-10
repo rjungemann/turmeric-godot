@@ -118,9 +118,9 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; Convenience: Input is the most-touched singleton in gameplay code.
 (defn input [] : int (godot-singleton "Input"))
 (defn input/is-action-pressed? [action : cstr] : bool
-  (godot-call-b (godot-singleton "Input") "is_action_pressed" action))
+  (godot-callx-b-c (godot-singleton "Input") "is_action_pressed" action))
 (defn input/is-action-just-pressed? [action : cstr] : bool
-  (godot-call-b (godot-singleton "Input") "is_action_just_pressed" action))
+  (godot-callx-b-c (godot-singleton "Input") "is_action_just_pressed" action))
 
 ;; --- Node2D position / scale -- pos is an arena vec2 handle ----------------
 ;; T2.A -- typed pos/scale args + typed get-position return. self stays
@@ -128,35 +128,35 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; NodeHandle ascriptions; the generator's typed-self path lives in the
 ;; per-class facade (node2d/set-position, ...) where the ancestor is
 ;; CanvasItemHandle / Node2DHandle.
-(defn node/set-position [self : int pos : Vec2Handle]
-  (godot-call self "set_position" (:: pos :int)))
+(defn node/set-position [self : int pos : Vec2Handle] : void
+  (godot-callx-v-i self "set_position" (:: pos :int)))
 (defn node/get-position [self : int] : Vec2Handle
-  (:: (godot-call self "get_position") :Vec2Handle))
-(defn node/set-scale [self : int scale : Vec2Handle]
-  (godot-call self "set_scale" (:: scale :int)))
+  (:: (godot-callx-i self "get_position") :Vec2Handle))
+(defn node/set-scale [self : int scale : Vec2Handle] : void
+  (godot-callx-v-i self "set_scale" (:: scale :int)))
 
 ;; --- CanvasItem modulate -- c is an arena color handle ---------------------
-(defn node/set-modulate [self : int c : ColorHandle]
-  (godot-call self "set_modulate" (:: c :int)))
+(defn node/set-modulate [self : int c : ColorHandle] : void
+  (godot-callx-v-i self "set_modulate" (:: c :int)))
 (defn node/get-modulate [self : int] : ColorHandle
-  (:: (godot-call self "get_modulate") :ColorHandle))
+  (:: (godot-callx-i self "get_modulate") :ColorHandle))
 
 ;; --- Node traversal --------------------------------------------------------
 ;; T2.B -- node/get-node returns a NodeHandle (the looked-up node).
 ;; Comparison-with-null still needs the underlying :int -- ascribe back
 ;; with (:: h :int) at the call site if you need (= h 0).
 (defn node/get-node [self : int path : cstr] : NodeHandle
-  (:: (godot-call self "get_node" path) :NodeHandle))
-(defn node/queue-free [self : int]
-  (godot-call self "queue_free"))
+  (:: (godot-callx-i-c self "get_node" path) :NodeHandle))
+(defn node/queue-free [self : int] : void
+  (godot-callx-v self "queue_free"))
 
 ;; Honest :cstr-returning wrappers via godot-call-c. The cstr is valid
 ;; for the rest of the current outer cb_call frame (string arena
 ;; lifetime); copy if you need to outlive the method.
 (defn node/get-name [self : int] : cstr
-  (godot-call-c self "get_name"))
+  (godot-callx-c self "get_name"))
 (defn node/get-class [self : int] : cstr
-  (godot-call-c self "get_class"))
+  (godot-callx-c self "get_class"))
 
 ;; --- Dictionary helpers -- godot-dict-has now returns :bool, so the
 ;;     usual (if (dict-has? d k) ...) idiom works directly. ------------------
@@ -175,10 +175,10 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
   (:: (godot-array-new) :ArrayHandle))
 (defn array-size [a : ArrayHandle] : int
   (godot-array-len (:: a :int)))
-(defn array-push-i [a : ArrayHandle v : int]   (godot-array-push (:: a :int) v))
-(defn array-push-f [a : ArrayHandle v : float] (godot-array-push (:: a :int) v))
-(defn array-push-b [a : ArrayHandle v : bool]  (godot-array-push (:: a :int) v))
-(defn array-push-c [a : ArrayHandle v : cstr]  (godot-array-push (:: a :int) v))
+(defn array-push-i [a : ArrayHandle v : int]   : void (godot-array-push-i (:: a :int) v))
+(defn array-push-f [a : ArrayHandle v : float] : void (godot-array-push-f (:: a :int) v))
+(defn array-push-b [a : ArrayHandle v : bool]  : void (godot-array-push-b (:: a :int) v))
+(defn array-push-c [a : ArrayHandle v : cstr]  : void (godot-array-push-c (:: a :int) v))
 (defn array-get-i [a : ArrayHandle i : int] : int
   (godot-array-get-i (:: a :int) i))
 (defn array-get-f [a : ArrayHandle i : int] : float
@@ -190,10 +190,10 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 
 (defn dict-new [] : DictHandle
   (:: (godot-dict-new) :DictHandle))
-(defn dict-set-i [d : DictHandle k : cstr v : int]   (godot-dict-set (:: d :int) k v))
-(defn dict-set-f [d : DictHandle k : cstr v : float] (godot-dict-set (:: d :int) k v))
-(defn dict-set-b [d : DictHandle k : cstr v : bool]  (godot-dict-set (:: d :int) k v))
-(defn dict-set-c [d : DictHandle k : cstr v : cstr]  (godot-dict-set (:: d :int) k v))
+(defn dict-set-i [d : DictHandle k : cstr v : int]   : void (godot-dict-set-i (:: d :int) k v))
+(defn dict-set-f [d : DictHandle k : cstr v : float] : void (godot-dict-set-f (:: d :int) k v))
+(defn dict-set-b [d : DictHandle k : cstr v : bool]  : void (godot-dict-set-b (:: d :int) k v))
+(defn dict-set-c [d : DictHandle k : cstr v : cstr]  : void (godot-dict-set-c (:: d :int) k v))
 (defn dict-get-i [d : DictHandle k : cstr] : int
   (godot-dict-get-i (:: d :int) k))
 (defn dict-get-f [d : DictHandle k : cstr] : float
@@ -259,7 +259,7 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; Handle either populated or as a wrapped-0 sentinel; the standard idiom
 ;; is `(if (= (:: result :int) 0) ... ...)`.
 (defn is-class? [h : int class-name : cstr] : bool
-  (godot-call-b h "is_class" class-name))
+  (godot-callx-b-c h "is_class" class-name))
 
 ;; --- G6.3 -- curated one-shot patterns -------------------------------------
 ;; Patterns every gameplay script reaches for at least once. Pure prelude
@@ -270,35 +270,37 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; the typed defopaque the generator already declares; internal callers
 ;; demote with (:: t :int) at the godot-call boundary.
 (defn get-tree [] : SceneTreeHandle
-  (:: (godot-call (godot-self) "get_tree") :SceneTreeHandle))
+  (:: (godot-callx-i (godot-self) "get_tree") :SceneTreeHandle))
 (defn tree/quit [] : void
-  (godot-call-v (:: (get-tree) :int) "quit"))
+  (godot-callx-v (:: (get-tree) :int) "quit"))
 (defn tree/get-root [] : NodeHandle
-  (:: (godot-call (:: (get-tree) :int) "get_root") :NodeHandle))
+  (:: (godot-callx-i (:: (get-tree) :int) "get_root") :NodeHandle))
 (defn tree/change-scene-to-file [path : cstr] : void
-  (godot-call-v (:: (get-tree) :int) "change_scene_to_file" path))
+  (godot-callx-v-c (:: (get-tree) :int) "change_scene_to_file" path))
 
+;;#aot-skip-begin  timer/one-shot takes a closure -- see bridge/native_abi.h
 ;; Timer one-shot creation -- common enough to deserve a helper. The
 ;; handler is a closure value type-checked at the call site (G6.1).
 ;; The returned handle is a SceneTreeTimer, which isn't in the
 ;; allowlist, so it stays bare :int.
 (defn timer/one-shot [seconds : float handler : (fn [] void)] : int
-  (let [t (godot-call (:: (get-tree) :int) "create_timer" seconds)]
+  (let [t (godot-callx-i-f (:: (get-tree) :int) "create_timer" seconds)]
     (godot-connect-typed t "timeout" handler)
     t))
+;;#aot-skip-end
 
 ;; Engine.
 (defn engine [] : int (godot-singleton "Engine"))
 (defn engine/get-frames-drawn [] : int
-  (godot-call (engine) "get_frames_drawn"))
+  (godot-callx-i (engine) "get_frames_drawn"))
 (defn engine/get-process-fps [] : float
-  (godot-call-f (engine) "get_frames_per_second"))
+  (godot-callx-f (engine) "get_frames_per_second"))
 
 ;; OS (Time provides the ticks; OS lacks a millisecond clock in 4.3).
 (defn os [] : int (godot-singleton "OS"))
 (defn time [] : int (godot-singleton "Time"))
 (defn os/get-system-time-msecs [] : int
-  (godot-call (time) "get_ticks_msec"))
+  (godot-callx-i (time) "get_ticks_msec"))
 
 ;; Logging that isn't just godot-println. Both route through godot-println
 ;; with a tag prefix for v1; a real (push_warning / push_error) path can
@@ -308,15 +310,17 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 (defn log/error [msg : cstr] : void
   (godot-println msg))
 
+;;#aot-skip-begin  after takes a closure -- see bridge/native_abi.h
 ;; Compose timer/one-shot for the deferred-call pattern. The timer
 ;; handle is the typed callee target only; the script side only cares
 ;; about the closure firing once `seconds` later, so godot-connect-typed
 ;; (TUR_NRT_VOID) is the tail expression.
 (defn after [seconds : float handler : (fn [] void)] : void
   (godot-connect-typed
-    (godot-call (:: (get-tree) :int) "create_timer" seconds)
+    (godot-callx-i-f (:: (get-tree) :int) "create_timer" seconds)
     "timeout"
     handler))
+;;#aot-skip-end
 
 ;; --- T4.D: preload (compile-time-validated resource load) ---------------
 ;;
@@ -363,7 +367,7 @@ const char *TG_PRELUDE_SOURCE = R"TURMERIC(
 ;; is reached as (cross-call enemy-node "do-thing" ...). The bridge's
 ;; cb_call normalises the underscore/dash spelling.
 (defn cross-call [other : int method : cstr] : int
-  (godot-call other method))
+  (godot-callx-i other method))
 (defn cross-call-pack [other : int method : cstr extras : ArrayHandle] : int
   (godot-call-pack other method (:: extras :int)))
 

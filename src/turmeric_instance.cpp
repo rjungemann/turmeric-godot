@@ -124,6 +124,17 @@ static GDExtensionBool cb_has_method(GDExtensionScriptInstanceDataPtr p_instance
     StringName name = *reinterpret_cast<const StringName *>(p_name);
     String s = name;
     CharString cs = s.utf8();
+    // The AOT image has to be consulted first, and it is not an optimisation.
+    // Godot asks has_method("_process") to decide whether to put the node on
+    // the process list at all -- so this answer gates whether cb_call is ever
+    // reached. On the A4 fast path (cached library + metadata sidecar)
+    // _reload returns before the interpreter eval, so the env holds no
+    // closures at all and a lookup_method-only answer is "no method", which
+    // silently disables every lifecycle hook the script defines.
+    if (self && self->script) {
+        const aot::AotImage *image = self->script->get_aot_image();
+        if (image && aot::resolve_aot_method(image, cs.get_data())) return 1;
+    }
     TuriValue v = lookup_method(self, cs.get_data());
     return v.tag == TURI_CLOSURE ? 1 : 0;
 }
@@ -163,9 +174,25 @@ static void cb_call(GDExtensionScriptInstanceDataPtr p_self,
             if (ex) {
                 Variant aot_ret;
                 GDExtensionCallError aot_err{};
-                if (aot::dispatch_aot_call_with(image, ex,
+                // The compiled code behind `ex` calls the same godot-* natives
+                // the interpreter does -- through the exported C entry points
+                // in bridge/native_abi.cpp -- so it needs the same two pieces
+                // of ambient state the interpreter path sets up below:
+                // g_current_instance (godot-self, godot-prop-get/set read it)
+                // and a Variant arena frame (godot-vec2 and every other
+                // aggregate builder pushes into it). Without them an AOT
+                // script gets "called outside an instance method" from the
+                // first property read, and leaks every arena handle it makes.
+                TurmericInstance *aot_prev_inst = g_current_instance;
+                g_current_instance = self;
+                VariantArenaFrame aot_frame = variant_arena_enter();
+                const bool aot_handled =
+                    aot::dispatch_aot_call_with(image, ex,
                                                  p_args, p_argument_count,
-                                                 &aot_ret, &aot_err)) {
+                                                 &aot_ret, &aot_err);
+                variant_arena_leave(aot_frame);
+                g_current_instance = aot_prev_inst;
+                if (aot_handled) {
                     if (r_return) {
                         internal::gdextension_interface_variant_new_copy(
                             r_return, aot_ret._native_ptr());

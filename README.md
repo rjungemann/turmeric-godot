@@ -11,12 +11,37 @@ dock with `(emit-signal ...)` firing them at runtime. The `defgodot-script`
 block surface, the ClassDB allowlist (53 classes), the paddle-pong demo and
 the AOT cache have all landed; macOS, Linux and Windows all build.
 
-**One caveat worth reading before you reach for it:** the AOT path cannot
-currently compile a script that touches the engine. It stages the script into
-a transient project built by standalone `tur`, which has no `godot-*` natives
--- those are C++ functions this extension registers into the interpreter env
-at run time -- so the staged build stops at the first one. The interpreter
-path is unaffected and is what the demos use. See
+**The AOT path now compiles scripts that touch the engine.** The extension
+exports a real C entry point for every fixed-arity `godot-*` native
+(`src/bridge/native_abi.h`), and the AOT stager writes those out as
+`(extern-c ...)` declarations plus the baked-in prelude into a `tg-godot`
+module beside the staged script. Symbols bind at `dlopen`, against the running
+extension. Try it without editing anything:
+
+```sh
+cd examples/paddle-pong-tur
+TURMERIC_GODOT_AOT=1 TUR_BIN=/path/to/tur \
+  godot --headless --path . --script scripts/pong_driver.gd
+```
+
+`ball.tur` and `paddle.tur` build and dispatch through AOT and the behavioural
+assertions pass; `score.tur` calls the variadic `(godot-call ...)` directly,
+which has no compiled entry point, so it prints a note naming the substitute
+and falls back to the interpreter.
+
+**What still cannot be AOT-compiled**, each reported as a build-log note rather
+than a bare "unknown function":
+
+- the variadic natives -- `godot-call{,-v,-f,-b,-c}`, `godot-signal`,
+  `emit-signal`. Use the arity-typed `godot-callx-*` family, or a curated
+  prelude wrapper such as `(node/get-node self path)`;
+- the 2234-wrapper generated facade (`label/set-text`, `node2d/...`), which is
+  built on those variadic natives and is not staged yet;
+- `godot-connect-typed`, and the `timer/one-shot` / `after` prelude wrappers
+  over it -- a Turmeric closure has no shared representation between the
+  interpreter and compiled code.
+
+Full status, with what was measured and what remains:
 [godot-aot-staged-build-lacks-godot-natives](https://github.com/rjungemann/turmeric/blob/main/docs/reported/godot-aot-staged-build-lacks-godot-natives.md).
 
 Plans, in the turmeric repo:
