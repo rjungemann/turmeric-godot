@@ -29,6 +29,18 @@ assertions pass; `score.tur` calls the variadic `(godot-call ...)` directly,
 which has no compiled entry point, so it prints a note naming the substitute
 and falls back to the interpreter.
 
+> **Windows** needs a `tur` newer than v0.46.0 for AOT. On macOS and Linux the
+> staged library leaves the `godot_*` symbols unresolved until `dlopen` binds
+> them against the running extension; PE resolves every import at link time,
+> so the stager writes a `:build-opts` block linking the staged library
+> against this extension's own DLL -- and `tur build --shared` only honours
+> that block from the fix in turmeric's `cmd_build_multi_files` onward. With
+> an older `tur` every staged build fails at the link with
+> `undefined reference to godot_println` and the script falls back to the
+> interpreter. Verified with the same command above: `ball.tur` and
+> `paddle.tur` load 110 exports each, dispatch through AOT, and the assertions
+> pass, cold cache and warm.
+
 **What still cannot be AOT-compiled**, each reported as a build-log note rather
 than a bare "unknown function":
 

@@ -18,7 +18,16 @@
 // MinGW has no <sys/wait.h>: std::system() already returns the child's exit
 // code directly there, so there is nothing to decode. <direct.h> supplies the
 // one-argument _mkdir, and <stdlib.h> the _fullpath that stands in for
-// realpath().
+// realpath(). <windows.h> is for GetModuleHandleEx/GetModuleFileName, which
+// is how the stager learns THIS extension's own path -- see
+// self_module_path() and the PE note above make_build_tur.
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  include <windows.h>
 #  include <direct.h>
 #else
 #  include <sys/wait.h>
@@ -216,15 +225,86 @@ std::string module_name_for(const std::string &script_path) {
     return base;
 }
 
+#ifdef _WIN32
+// Absolute path of the module this code is running in -- the extension DLL --
+// found by asking the loader which module contains this function's address.
+// Discovered rather than computed from the .gdextension naming scheme, so it
+// is right for template_debug and template_release alike and for whatever
+// filename the project actually loaded. Empty string on failure.
+std::string self_module_path() {
+    HMODULE h = nullptr;
+    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            reinterpret_cast<LPCSTR>(&self_module_path), &h))
+        return std::string();
+    char buf[MAX_PATH];
+    DWORD n = GetModuleFileNameA(h, buf, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) return std::string();
+    std::string p(buf, n);
+    // The path lands on a gcc command line; MinGW takes forward slashes and
+    // they sidestep every backslash-escaping question in between.
+    for (char &c : p) if (c == '\\') c = '/';
+    return p;
+}
+#endif
+
 // Minimal build.tur for the staged project. We omit :exports -- the user's
 // script declares its own (defmodule ... :exports [...]) and we trust the
 // compiler's exported-defn detection. The staged package name embeds the
 // hash so log lines name the cache slot, not "script".
+//
+// On Windows it also carries a :build-opts block that links the staged
+// library against THIS extension. That is not needed elsewhere and it is not
+// optional here:
+//
+//   The staged library calls the godot-* natives through the C entry points
+//   bridge/native_abi.h exports. On macOS `tur build --shared` links with
+//   `-undefined dynamic_lookup`, and Linux ld allows undefined symbols in a
+//   shared object by default, so those references stay unresolved until
+//   dlopen binds them against the running extension. PE has no such mode: a
+//   DLL must resolve every import at LINK time, and without this block the
+//   staged build dies with 122 lines of
+//
+//     ld.exe: undefined reference to `godot_println'
+//
+//   which is the report's original failure wearing a different hat.
+//
+// MinGW's ld can take the DLL itself as a link input -- it synthesises the
+// import stubs from the export table, so no .dll.a import library has to be
+// produced or found. `-L<dir> -l<name>` resolves `lib<name>.dll` directly
+// (verified: a stand-in exporting godot_println linked and the result imports
+// the extension BY NAME, which is exactly the contract the loader honours when
+// the extension is already mapped into Godot's process). The name is the
+// DLL's basename with the `lib` prefix and `.dll` suffix stripped, spelled the
+// way `-l` wants it.
+//
+// Goes through :build-opts rather than TUR_CC_FLAGS deliberately. TUR_CC_FLAGS
+// REPLACES the compiler's default flags, and a shared build relies on the
+// optimizer's dead-code elimination (see the -Og note in tur's main.c) to drop
+// stdlib defns that reference libturi-only symbols -- replacing `-O2` with a
+// bare DLL path made `tur_hamt_new` go undefined instead. The manifest is
+// additive.
 std::string make_build_tur(const std::string &pkg_name) {
     std::string out;
     out.append("(defpackage ").append(pkg_name).append("\n");
     out.append("  :name \"").append(pkg_name).append("\"\n");
-    out.append("  :version \"0.1.0\")\n");
+    out.append("  :version \"0.1.0\"");
+#ifdef _WIN32
+    const std::string self = self_module_path();
+    const size_t slash = self.rfind('/');
+    if (!self.empty() && slash != std::string::npos) {
+        std::string dir  = self.substr(0, slash);
+        std::string name = self.substr(slash + 1);
+        if (name.compare(0, 3, "lib") == 0) name.erase(0, 3);
+        if (name.size() > 4 && name.compare(name.size() - 4, 4, ".dll") == 0)
+            name.erase(name.size() - 4);
+        out.append("\n  :build-opts #map{\n");
+        out.append("    :link-flags [\"-L").append(dir).append("\"]\n");
+        out.append("    :link-libs [\"").append(name).append("\"]\n");
+        out.append("  }");
+    }
+#endif
+    out.append(")\n");
     return out;
 }
 
