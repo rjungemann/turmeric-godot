@@ -121,6 +121,21 @@ public:
     Dictionary complete_code_for_test(const String &p_code, const String &p_path);
 };
 
+
+// --- Script-scoped natives (AOT ABI) ---------------------------------------
+//
+// These five live in turmeric_language.cpp because they reach into
+// TurmericScript / TurmericInstance state (exports, signals, the current
+// instance) rather than into the ClassDB proxy. They used to be file-static;
+// bridge/native_abi.cpp needs them to build the exported C entry points the
+// AOT path calls, so they are declared here instead. The interpreter-facing
+// registration in init_turi() is unchanged.
+TuriValue tg_native_println     (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_export      (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_prop_get    (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_prop_get_c  (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+TuriValue tg_native_prop_set    (TuriEnv *env, TuriValue *args, uint32_t n, void *ud);
+
 } // namespace godot
 
 #endif // TURMERIC_GODOT_TURMERIC_LANGUAGE_H
